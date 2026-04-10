@@ -1,0 +1,5 @@
+[
+  {
+    "_note": "This file is a placeholder for offline/static builds. The live app reads from js/schools.js. To use this file, load it via fetch() and assign to window.SCHOOLS in a future refactor."
+  }
+]

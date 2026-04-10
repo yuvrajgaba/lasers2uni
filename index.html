@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Laser2Uni — Find Your Transfer Fit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════
+       SCREEN 1: ONBOARDING
+  ═══════════════════════════════════════════ -->
+  <div id="screen-onboarding" class="screen active">
+    <div class="onboarding-wrap">
+
+      <div class="ob-logo">Laser<span>2Uni</span></div>
+      <p class="ob-tagline">Find your transfer fit — built for IVC students.</p>
+
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill" style="width:25%"></div>
+      </div>
+      <div class="step-indicator" id="step-indicator">Step 1 of 4</div>
+
+      <!-- ─── Step 0: Name + Major ─── -->
+      <div class="step" id="step-0">
+        <h2 class="step-title">Let's get to know you</h2>
+
+        <label class="field-label">First Name</label>
+        <input type="text" id="input-name" class="text-input" placeholder="e.g. Alex" autocomplete="off" />
+
+        <label class="field-label">Intended Major</label>
+        <select id="input-major" class="select-input">
+          <option value="" disabled selected>Choose your major…</option>
+          <optgroup label="Engineering & CS">
+            <option>Computer Science</option>
+            <option>Mechanical Engineering</option>
+            <option>Electrical Engineering</option>
+            <option>Civil Engineering</option>
+            <option>Aerospace Engineering</option>
+            <option>Biomedical Engineering</option>
+            <option>Chemical Engineering</option>
+          </optgroup>
+          <optgroup label="Business">
+            <option>Business Administration</option>
+            <option>Economics</option>
+            <option>Finance</option>
+            <option>Marketing</option>
+          </optgroup>
+          <optgroup label="Sciences">
+            <option>Biology</option>
+            <option>Chemistry</option>
+            <option>Psychology</option>
+            <option>Neuroscience</option>
+            <option>Data Science</option>
+            <option>Environmental Science</option>
+          </optgroup>
+          <optgroup label="Humanities & Social Sciences">
+            <option>Political Science</option>
+            <option>Sociology</option>
+            <option>Communication</option>
+            <option>English</option>
+            <option>History</option>
+            <option>Philosophy</option>
+          </optgroup>
+          <optgroup label="Arts & Media">
+            <option>Film & Media Studies</option>
+            <option>Graphic Design</option>
+            <option>Music</option>
+            <option>Architecture</option>
+          </optgroup>
+          <optgroup label="Health">
+            <option>Nursing / Pre-Nursing</option>
+            <option>Public Health</option>
+            <option>Kinesiology</option>
+            <option>Pre-Med / Biology</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <!-- ─── Step 1: GPA + Units + IGETC + Honors ─── -->
+      <div class="step hidden" id="step-1">
+        <h2 class="step-title">Your academics</h2>
+
+        <label class="field-label">GPA <span class="gpa-display" id="gpa-display">3.50</span></label>
+        <input type="range" id="input-gpa" class="gpa-slider" min="1.5" max="4.0" step="0.05" value="3.5" />
+        <div class="slider-range-labels"><span>1.5</span><span>4.0</span></div>
+
+        <label class="field-label">Units Completed</label>
+        <div class="pill-group" data-key="units" data-multi="false">
+          <button class="pill" data-val="30–45">30–45</button>
+          <button class="pill" data-val="45–60">45–60</button>
+          <button class="pill" data-val="60+">60+</button>
+        </div>
+
+        <label class="field-label">
+          IGETC Status
+          <button class="info-badge" data-tooltip="IGETC (Intersegmental General Education Transfer Curriculum) is a set of lower-division courses that satisfies general education requirements for UC and most CSU campuses. Completing it before transfer saves you from repeating GE at your new school.">?</button>
+        </label>
+        <div class="pill-group" data-key="igetc" data-multi="false">
+          <button class="pill" data-val="Completed">Completed</button>
+          <button class="pill" data-val="In Progress">In Progress</button>
+          <button class="pill" data-val="Not Started">Not Started</button>
+          <button class="pill" data-val="Don't Know">Don't Know</button>
+        </div>
+
+        <label class="field-label">
+          IVC Honors Program
+          <button class="info-badge" data-tooltip="IVC Honors gives you access to the Honors-to-Honors pathway to UCI and strengthens TAG eligibility. TAG (Transfer Admission Guarantee) lets qualifying IVC students lock in a UC admission before leaving IVC — if you meet the GPA threshold for your major.">?</button>
+        </label>
+        <div class="pill-group" data-key="honors" data-multi="false">
+          <button class="pill" data-val="Yes — actively enrolled">Yes — actively enrolled</button>
+          <button class="pill" data-val="Interested, not yet">Interested, not yet</button>
+          <button class="pill" data-val="Not in honors">Not in honors</button>
+        </div>
+      </div>
+
+      <!-- ─── Step 2: Career + Industries + Grad School ─── -->
+      <div class="step hidden" id="step-2">
+        <h2 class="step-title">Goals & career</h2>
+
+        <label class="field-label">Describe your career goals</label>
+        <textarea id="input-career" class="text-area" rows="3" placeholder="e.g. I want to build AI products at a startup, eventually start my own company…"></textarea>
+
+        <label class="field-label">Target Industries <span class="muted-hint">(pick all that apply)</span></label>
+        <div class="pill-group" data-key="industries" data-multi="true">
+          <button class="pill" data-val="Tech / Software">Tech / Software</button>
+          <button class="pill" data-val="Engineering / Hardware">Engineering / Hardware</button>
+          <button class="pill" data-val="Healthcare / Medicine">Healthcare / Medicine</button>
+          <button class="pill" data-val="Business / Finance">Business / Finance</button>
+          <button class="pill" data-val="Research / Academia">Research / Academia</button>
+          <button class="pill" data-val="Creative / Media">Creative / Media</button>
+          <button class="pill" data-val="Government / Policy">Government / Policy</button>
+          <button class="pill" data-val="Startups / Entrepreneurship">Startups / Entrepreneurship</button>
+        </div>
+
+        <label class="field-label">Grad School Plans</label>
+        <div class="pill-group" data-key="grad" data-multi="false">
+          <button class="pill" data-val="Definitely yes">Definitely yes</button>
+          <button class="pill" data-val="Maybe someday">Maybe someday</button>
+          <button class="pill" data-val="No thanks">No thanks</button>
+          <button class="pill" data-val="Don't know yet">Don't know yet</button>
+        </div>
+      </div>
+
+      <!-- ─── Step 3: Campus + Location + Priorities + Notes ─── -->
+      <div class="step hidden" id="step-3">
+        <h2 class="step-title">Your ideal campus</h2>
+
+        <label class="field-label">Campus Size</label>
+        <div class="pill-group" data-key="size" data-multi="false">
+          <button class="pill" data-val="Large">Large (20k+)</button>
+          <button class="pill" data-val="Medium">Medium (10–20k)</button>
+          <button class="pill" data-val="Small">Small (&lt;10k)</button>
+          <button class="pill" data-val="No preference">No preference</button>
+        </div>
+
+        <label class="field-label">Preferred Region <span class="muted-hint">(pick all that apply)</span></label>
+        <div class="pill-group" data-key="regions" data-multi="true">
+          <button class="pill" data-val="SoCal">SoCal</button>
+          <button class="pill" data-val="NorCal / Bay Area">NorCal / Bay Area</button>
+          <button class="pill" data-val="Out of State">Out of State</button>
+        </div>
+
+        <label class="field-label">What matters most to you? <span class="muted-hint">(pick all that apply)</span></label>
+        <div class="pill-group" data-key="priorities" data-multi="true">
+          <button class="pill" data-val="Research opportunities">Research opportunities</button>
+          <button class="pill" data-val="Industry connections">Industry connections</button>
+          <button class="pill" data-val="Cost/financial aid">Cost / financial aid</button>
+          <button class="pill" data-val="Prestige/rankings">Prestige / rankings</button>
+          <button class="pill" data-val="Social life">Social life</button>
+          <button class="pill" data-val="Diversity">Diversity</button>
+          <button class="pill" data-val="Job placement rate">Job placement rate</button>
+          <button class="pill" data-val="Staying close to home">Staying close to home</button>
+        </div>
+
+        <label class="field-label">Anything else? <span class="muted-hint">(optional)</span></label>
+        <textarea id="input-extra" class="text-area" rows="2" placeholder="Anything else we should know about you…"></textarea>
+      </div>
+
+      <!-- Nav buttons -->
+      <div class="step-nav">
+        <button id="btn-ob-back" class="btn-ghost" style="visibility:hidden">← Back</button>
+        <button id="btn-ob-next" class="btn-primary">Next →</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SCREEN 2: SWIPE
+  ═══════════════════════════════════════════ -->
+  <div id="screen-swipe" class="screen hidden">
+    <header class="swipe-header">
+      <div class="logo-sm">Laser<span>2Uni</span></div>
+      <div class="swipe-meta">
+        <span id="cards-remaining">20 left</span>
+        <span id="liked-count" class="liked-badge">❤ 0 liked</span>
+      </div>
+    </header>
+
+    <div class="card-arena">
+      <div class="card-stack" id="card-stack">
+        <!-- Cards injected by ui.js -->
+      </div>
+
+      <div class="fit-bar" id="fit-bar">
+        <span class="fit-label-text" id="fit-label-text">Strong Fit</span>
+        <div class="fit-meter-track">
+          <div class="fit-meter-fill" id="fit-meter-fill" style="width:85%"></div>
+        </div>
+        <span class="fit-score-text" id="fit-score-text">85</span>
+      </div>
+    </div>
+
+    <div class="swipe-controls">
+      <button class="ctrl-btn pass-btn" id="btn-pass" title="Pass">✕</button>
+      <button class="ctrl-btn skip-btn" id="btn-skip" title="Skip">—</button>
+      <button class="ctrl-btn like-btn" id="btn-like" title="Like">♥</button>
+    </div>
+
+    <button class="btn-done-swiping hidden" id="btn-done-swiping">
+      Done swiping → See my results
+    </button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SCREEN 3: LOADING
+  ═══════════════════════════════════════════ -->
+  <div id="screen-loading" class="screen hidden">
+    <div class="loading-inner">
+      <div class="spinner-ring"></div>
+      <p class="loading-msg" id="loading-msg">Analyzing your preferences…</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SCREEN 4: DASHBOARD
+  ═══════════════════════════════════════════ -->
+  <div id="screen-dashboard" class="screen hidden">
+
+    <header class="dash-header" id="dash-header">
+      <div class="logo-sm">Laser<span>2Uni</span></div>
+      <div class="student-chip" id="student-chip">Name · Major · GPA</div>
+    </header>
+
+    <div class="tab-bar" id="tab-bar">
+      <button class="tab active" data-tab="schools">Schools</button>
+      <button class="tab" data-tab="requirements">Requirements</button>
+      <button class="tab" data-tab="life-plan">Life Plan</button>
+    </div>
+
+    <div class="tab-pane active" id="tab-schools">
+      <!-- Injected by ui.js -->
+    </div>
+    <div class="tab-pane hidden" id="tab-requirements">
+      <!-- Injected by ui.js -->
+    </div>
+    <div class="tab-pane hidden" id="tab-life-plan">
+      <!-- Injected by ui.js -->
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       OUTCOMES REPORT MODAL (Demo feature)
+  ═══════════════════════════════════════════ -->
+  <div id="outcomes-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h3 class="modal-title">Report Your Outcome</h3>
+      <p class="modal-sub">Got accepted? Let future IVC students know!</p>
+      <input type="text" id="outcome-name" class="text-input" placeholder="Your first name" />
+      <input type="text" id="outcome-major" class="text-input" placeholder="Your major" />
+      <input type="number" id="outcome-gpa" class="text-input" placeholder="Your GPA (e.g. 3.6)" step="0.01" min="1.5" max="4.0" />
+      <select id="outcome-school" class="select-input">
+        <option value="" disabled selected>Which school accepted you?</option>
+      </select>
+      <div class="modal-actions">
+        <button class="btn-ghost" id="btn-modal-cancel">Cancel</button>
+        <button class="btn-primary" id="btn-modal-submit">Submit ✓</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toast-container"></div>
+
+  <!-- Tooltip container -->
+  <div id="tooltip-box" class="tooltip-box hidden"></div>
+
+  <!-- ═══════════════════════════════════════════
+       SCRIPTS (order matters)
+  ═══════════════════════════════════════════ -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/schools.js"></script>
+  <script src="js/scoring.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/ui.js"></script>
+
+</body>
+</html>
