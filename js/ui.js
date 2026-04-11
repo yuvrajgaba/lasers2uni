@@ -585,7 +585,7 @@ async function finishSwiping() {
 
   startLoadingMessages();
 
-  // Call Claude API
+  // Call local AI provider
   aiData = await generateAIContent(student, tiers);
 
   // Small buffer so the last loading message is readable

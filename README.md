@@ -10,7 +10,7 @@ A Tinder-style transfer school finder for students at Irvine Valley College (IVC
 
 1. **Onboarding (4 steps)** — Student fills in name, major, GPA, IGETC status, IVC Honors enrollment, career goals, campus preferences, and priorities.
 2. **Swipe** — Swipe right to like a school, left to pass, up to skip. Tinder-style card stack.
-3. **AI Dashboard** — Claude API generates a personalized dashboard with:
+3. **AI Dashboard** — Ollama generates a personalized dashboard with:
    - **Schools tab** — Reach / 50-50 / Safety tiers with admission tips
    - **Requirements tab** — Course requirements, min GPA, IVC articulation notes
    - **Life Plan tab** — Career roadmap and timeline
@@ -25,7 +25,7 @@ A Tinder-style transfer school finder for students at Irvine Valley College (IVC
 | Frontend | Plain HTML / CSS / JS — zero frameworks, zero build tools |
 | Fonts | Google Fonts: Syne (headings) + DM Sans (body) |
 | Database | Supabase (JS client via CDN) |
-| AI | Claude API — `claude-sonnet-4-6` |
+| AI | Ollama local model — default `llama3.1` |
 
 ---
 
@@ -39,7 +39,7 @@ laser2uni/
 ├── js/
 │   ├── schools.js      ← school data array (owned by data person)
 │   ├── scoring.js      ← scoring + tiering algorithm
-│   ├── ai.js           ← Claude API call + fallback
+│   ├── ai.js           ← Ollama call + fallback
 │   ├── supabase.js     ← Supabase client + DB helpers
 │   └── ui.js           ← all UI logic, swipe engine, dashboard render
 ├── data/
@@ -58,11 +58,13 @@ cd laser2uni
 # Open index.html in browser — no server needed for most features
 ```
 
-### 2. Add Your API Keys
+### 2. Configure Ollama And Supabase
 
 Open `js/ai.js` and set:
 ```js
-const ANTHROPIC_API_KEY = 'sk-ant-...';
+const OLLAMA_ENABLED = true;
+const OLLAMA_URL = 'http://localhost:11434';
+const AI_MODEL = 'llama3.1';
 ```
 
 Open `js/supabase.js` and set:
@@ -71,40 +73,32 @@ const SUPABASE_URL = 'https://xxxx.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJ...';
 ```
 
-> **Never commit real keys.** Add them locally only. Consider a gitignored `config.js` for secrets.
-
-### 3. Claude API & CORS
-
-The Anthropic API blocks direct browser calls (CORS). For the hackathon demo pick one:
-
-**Option A — Chrome with CORS disabled (easiest for demo day)**
-```bash
-open -na "Google Chrome" --args --disable-web-security --user-data-dir=/tmp/chrome-demo
-```
-
-**Option B — 10-line Node proxy**
+If you want to demo without local AI, set:
 ```js
-// proxy.js — run: node proxy.js
-const http = require('http');
-const https = require('https');
-http.createServer((req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', '*');
-  if (req.method === 'OPTIONS') { res.end(); return; }
-  const body = [];
-  req.on('data', c => body.push(c));
-  req.on('end', () => {
-    const pr = https.request('https://api.anthropic.com' + req.url, {
-      method: req.method, headers: { ...req.headers, host: 'api.anthropic.com' }
-    }, r => { res.writeHead(r.statusCode, r.headers); r.pipe(res); });
-    pr.write(Buffer.concat(body)); pr.end();
-  });
-}).listen(4000, () => console.log('Proxy on :4000'));
+const OLLAMA_ENABLED = false;
 ```
-Then set `const PROXY_URL = 'http://localhost:4000'` in `js/ai.js`.
 
-**Option C — Fallback only**
-Leave `ANTHROPIC_API_KEY` empty — `buildFallback()` returns polished static content and the demo never crashes.
+That forces the polished fallback content so the dashboard never breaks.
+
+### 3. Ollama Setup
+
+Install and start Ollama locally:
+
+```bash
+OLLAMA_ORIGINS=* ollama serve
+```
+
+Then pull a model once:
+
+```bash
+ollama pull llama3.1
+```
+
+If you prefer a different local model, just change `AI_MODEL` in `js/ai.js`.
+
+If Ollama is not running or the browser cannot reach `http://localhost:11434`, the app automatically falls back to built-in content.
+
+If you open the app directly in the browser and the AI request silently fails, the usual cause is browser-origin blocking. Starting Ollama with `OLLAMA_ORIGINS=*` is the easiest hackathon-safe fix for local browser access.
 
 ### 4. Supabase Tables
 
