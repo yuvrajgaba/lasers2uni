@@ -16,7 +16,7 @@
   --muted:    #7a92b8;
 
   /* School type colors */
-  --uc-grad:      linear-gradient(135deg, #7c6df0 0%, #5a4bc4 100%);
+  --uc-grad:      linear-gradient(135deg, #1e90ff 0%, #1268cc 100%);
   --csu-grad:     linear-gradient(135deg, #3de8a0 0%, #1db87a 100%);
   --private-grad: linear-gradient(135deg, #f05c7c 0%, #c03060 100%);
   --oos-grad:     linear-gradient(135deg, #ffb432 0%, #e08800 100%);
@@ -539,7 +539,7 @@ a:hover { text-decoration: underline; }
 .card-tag.highlight {
   color: var(--accent);
   border-color: var(--accent);
-  background: rgba(124,109,240,0.1);
+  background: rgba(30,144,255,0.1);
 }
 
 .card-gpa-row {
@@ -688,7 +688,7 @@ a:hover { text-decoration: underline; }
   transition: all var(--transition);
   flex-shrink: 0;
 }
-.btn-done-swiping:hover { background: #9180f4; transform: translateY(-1px); }
+.btn-done-swiping:hover { background: #1268cc; transform: translateY(-1px); }
 
 /* Empty deck state */
 .deck-empty {
@@ -758,19 +758,28 @@ a:hover { text-decoration: underline; }
 }
 #screen-dashboard.active { display: flex; }
 
-/* Sticky header */
+/* ─── Top navbar ─── */
 .dash-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  background: var(--bg);
+  padding: 0 24px;
+  height: 58px;
+  background: var(--surface);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  position: sticky;
-  top: 0;
   z-index: 100;
 }
+
+.dash-nav-logo {
+  font-family: 'Satoshi', system-ui, sans-serif;
+  font-weight: 900;
+  font-size: 1.2rem;
+  letter-spacing: -0.5px;
+  color: var(--text);
+  user-select: none;
+}
+.dash-nav-logo span { color: var(--accent); }
 
 .student-chip {
   background: var(--surface2);
@@ -780,52 +789,115 @@ a:hover { text-decoration: underline; }
   font-size: 0.78rem;
   color: var(--muted);
   font-weight: 500;
-  max-width: 240px;
+  max-width: 260px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Tab bar */
-.tab-bar {
+/* ─── Sidebar + main layout ─── */
+.dash-body {
   display: flex;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg);
-  flex-shrink: 0;
-  position: sticky;
-  top: 57px;
-  z-index: 99;
-}
-.tab {
   flex: 1;
-  padding: 14px 10px;
-  background: transparent;
+  overflow: hidden;
+}
+
+.dash-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 10px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.dash-sidebar .tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
   border: none;
-  border-bottom: 2px solid transparent;
+  border-left: 3px solid transparent;
+  background: transparent;
   color: var(--muted);
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Satoshi', system-ui, sans-serif;
   font-size: 0.88rem;
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition);
+  text-align: left;
 }
-.tab:hover { color: var(--text); }
-.tab.active {
+.dash-sidebar .tab:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+.dash-sidebar .tab.active {
+  background: rgba(30,144,255,0.1);
   color: var(--accent);
-  border-bottom-color: var(--accent);
-  font-weight: 600;
+  font-weight: 700;
+  border-left-color: var(--accent);
+}
+
+.tab-icon {
+  font-size: 1rem;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.tab-label { flex: 1; }
+
+/* ─── Main content area ─── */
+.dash-main {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg);
 }
 
 /* Tab panes */
 .tab-pane {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px 16px 80px;
+  padding: 24px 24px 80px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 .tab-pane.hidden { display: none; }
+
+/* ─── Mobile: sidebar collapses to bottom bar ─── */
+@media (max-width: 640px) {
+  .dash-body { flex-direction: column-reverse; }
+
+  .dash-sidebar {
+    width: 100%;
+    flex-direction: row;
+    padding: 6px 8px;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    overflow-x: auto;
+    gap: 2px;
+  }
+  .dash-sidebar .tab {
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px 10px;
+    font-size: 0.7rem;
+    border-left: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  .dash-sidebar .tab.active {
+    border-left-color: transparent;
+    border-bottom-color: var(--accent);
+    padding-left: 10px;
+  }
+  .tab-icon { font-size: 1.1rem; width: auto; }
+  .tab-pane { padding: 16px 16px 20px; }
+}
 
 /* ─── Schools tab ─── */
 .tier-section { display: flex; flex-direction: column; gap: 10px; }
@@ -867,7 +939,6 @@ a:hover { text-decoration: underline; }
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
-  cursor: pointer;
   position: relative;
 }
 .school-card-stripe {
@@ -953,23 +1024,14 @@ a:hover { text-decoration: underline; }
 .fit-chip.good   { background: rgba(255,180,50,0.15);  color: var(--gold); }
 .fit-chip.possible { background: rgba(240,92,124,0.15); color: var(--accent2); }
 
-.school-card-toggle {
-  color: var(--muted);
-  font-size: 0.9rem;
-  transition: transform var(--transition);
-  flex-shrink: 0;
-}
-.school-card.expanded .school-card-toggle { transform: rotate(180deg); }
-
-/* Expanded content */
+/* Card body — always visible */
 .school-card-body {
-  display: none;
-  padding: 0 16px 16px 20px;
-  border-top: 1px solid var(--border);
+  display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 0 16px 16px 20px;
+  border-top: 1px solid var(--border);
 }
-.school-card.expanded .school-card-body { display: flex; }
 
 .school-card-section-label {
   font-size: 0.72rem;
@@ -1017,8 +1079,8 @@ a:hover { text-decoration: underline; }
 
 /* ─── Requirements tab ─── */
 .req-note {
-  background: rgba(124,109,240,0.08);
-  border: 1px solid rgba(124,109,240,0.25);
+  background: rgba(30,144,255,0.08);
+  border: 1px solid rgba(30,144,255,0.25);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
   font-size: 0.85rem;

@@ -99,7 +99,6 @@ function buildRankedSchoolCard(item, rank, topLabel) {
         <div class="school-card-name">${school.name}</div>
         <div class="school-card-loc">${school.loc}</div>
       </div>
-      <span class="school-card-toggle">+</span>
     </div>
     <div class="card-badge-row">
       ${topLabel ? `<span class="top-pick-badge">${topLabel}</span>` : ''}
@@ -137,12 +136,6 @@ function buildRankedSchoolCard(item, rank, topLabel) {
       ` : ''}
     </div>
   `;
-
-  card.querySelector('.school-card-header').addEventListener('click', () => {
-    card.classList.toggle('expanded');
-    card.querySelector('.school-card-toggle').textContent =
-      card.classList.contains('expanded') ? '-' : '+';
-  });
 
   // Async social proof badge (non-blocking)
   getSimilarStudentOutcomes(studentGpa, school.id).then(outcomes => {

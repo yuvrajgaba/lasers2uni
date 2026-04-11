@@ -18,32 +18,6 @@
       <div class="ob-logo">Lasers<span>2</span>Uni</div>
       <p class="ob-tagline">Find your transfer fit  -  built for IVC students.</p>
 
-      <!-- School logos strip -->
-      <div class="schools-strip">
-        <p class="schools-strip-label">Transfer destinations</p>
-        <div class="schools-logo-grid">
-          <img src="assets/logos/uci.png"     alt="UCI"     class="strip-logo" title="UC Irvine"            onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'UCI'}))">
-          <img src="assets/logos/ucb.png"     alt="UCB"     class="strip-logo" title="UC Berkeley"          onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'UCB'}))">
-          <img src="assets/logos/ucla.png"    alt="UCLA"    class="strip-logo" title="UCLA"                  onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'UCLA'}))">
-          <img src="assets/logos/ucsd.png"    alt="UCSD"    class="strip-logo" title="UC San Diego"          onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'UCSD'}))">
-          <img src="assets/logos/ucsb.png"    alt="UCSB"    class="strip-logo" title="UC Santa Barbara"      onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'UCSB'}))">
-          <img src="assets/logos/ucd.png"     alt="UCD"     class="strip-logo" title="UC Davis"              onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'UCD'}))">
-          <img src="assets/logos/ucsc.png"    alt="UCSC"    class="strip-logo" title="UC Santa Cruz"         onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'UCSC'}))">
-          <img src="assets/logos/ucr.png"     alt="UCR"     class="strip-logo" title="UC Riverside"          onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'UCR'}))">
-          <img src="assets/logos/ucm.png"     alt="UCM"     class="strip-logo" title="UC Merced"             onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'UCM'}))">
-          <img src="assets/logos/csuf.png"    alt="CSUF"    class="strip-logo" title="Cal State Fullerton"   onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'CSUF'}))">
-          <img src="assets/logos/csulb.png"   alt="CSULB"   class="strip-logo" title="Cal State Long Beach"  onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'CSULB'}))">
-          <img src="assets/logos/cpslo.png"   alt="CPSLO"   class="strip-logo" title="Cal Poly SLO"          onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'CPSLO'}))">
-          <img src="assets/logos/sdsu.png"    alt="SDSU"    class="strip-logo" title="San Diego State"       onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'SDSU'}))">
-          <img src="assets/logos/cpp.png"     alt="CPP"     class="strip-logo" title="Cal Poly Pomona"       onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'CPP'}))">
-          <img src="assets/logos/sjsu.png"    alt="SJSU"    class="strip-logo" title="San Jose State"        onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'SJSU'}))">
-          <img src="assets/logos/usc.png"     alt="USC"     class="strip-logo" title="USC"                   onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'USC'}))">
-          <img src="assets/logos/lmu.png"     alt="LMU"     class="strip-logo" title="Loyola Marymount"      onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'LMU'}))">
-          <img src="assets/logos/oc.png"      alt="OXY"     class="strip-logo" title="Occidental College"    onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'OXY'}))">
-          <img src="assets/logos/chapman.png" alt="Chapman" class="strip-logo" title="Chapman University"    onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'strip-logo-text',title:this.title,textContent:'Chapman'}))">
-        </div>
-      </div>
-
       <div class="progress-track">
         <div class="progress-fill" id="progress-fill" style="width:25%"></div>
       </div>
@@ -294,33 +268,41 @@
   ═══════════════════════════════════════════ -->
   <div id="screen-dashboard" class="screen hidden">
 
+    <!-- ─── Top navbar ─── -->
     <header class="dash-header" id="dash-header">
-      <div class="logo-sm">Lasers<span>2Uni</span></div>
+      <div class="dash-nav-logo">Lasers<span>2Uni</span></div>
       <div class="student-chip" id="student-chip">Name · Major · GPA</div>
     </header>
 
-    <div class="tab-bar" id="tab-bar">
-      <button class="tab active" data-tab="balanced">Balanced ✨</button>
-      <button class="tab" data-tab="fit">Best For You</button>
-      <button class="tab" data-tab="rankings">Rankings</button>
-      <button class="tab" data-tab="requirements">Requirements</button>
-      <button class="tab" data-tab="your-path">Your Path</button>
-    </div>
+    <!-- ─── Sidebar + main layout ─── -->
+    <div class="dash-body">
 
-    <div class="tab-pane active" id="tab-balanced">
-      <!-- Injected by dashboard.js -->
-    </div>
-    <div class="tab-pane hidden" id="tab-fit">
-      <!-- Injected by dashboard.js -->
-    </div>
-    <div class="tab-pane hidden" id="tab-rankings">
-      <!-- Injected by dashboard.js -->
-    </div>
-    <div class="tab-pane hidden" id="tab-requirements">
-      <!-- Injected by dashboard.js -->
-    </div>
-    <div class="tab-pane hidden" id="tab-your-path">
-      <!-- Injected by dashboard.js -->
+      <nav class="dash-sidebar" id="tab-bar">
+        <button class="tab active" data-tab="balanced">
+          <span class="tab-icon">✦</span><span class="tab-label">Balanced</span>
+        </button>
+        <button class="tab" data-tab="fit">
+          <span class="tab-icon">♥</span><span class="tab-label">Best For You</span>
+        </button>
+        <button class="tab" data-tab="rankings">
+          <span class="tab-icon">↑</span><span class="tab-label">Rankings</span>
+        </button>
+        <button class="tab" data-tab="requirements">
+          <span class="tab-icon">☑</span><span class="tab-label">Requirements</span>
+        </button>
+        <button class="tab" data-tab="your-path">
+          <span class="tab-icon">→</span><span class="tab-label">Your Path</span>
+        </button>
+      </nav>
+
+      <main class="dash-main">
+        <div class="tab-pane active" id="tab-balanced"><!-- Injected by dashboard.js --></div>
+        <div class="tab-pane hidden"  id="tab-fit"><!-- Injected by dashboard.js --></div>
+        <div class="tab-pane hidden"  id="tab-rankings"><!-- Injected by dashboard.js --></div>
+        <div class="tab-pane hidden"  id="tab-requirements"><!-- Injected by dashboard.js --></div>
+        <div class="tab-pane hidden"  id="tab-your-path"><!-- Injected by dashboard.js --></div>
+      </main>
+
     </div>
 
   </div>
