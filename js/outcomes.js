@@ -48,38 +48,51 @@ function closeOutcomesModal() {
 }
 
 async function submitOutcome() {
-  const nameEl   = document.getElementById('outcome-name');
-  const majorEl  = document.getElementById('outcome-major');
-  const gpaEl    = document.getElementById('outcome-gpa');
-  const schoolEl = document.getElementById('outcome-school');
+  const name  = document.getElementById('outcome-name')?.value.trim();
+  const major = document.getElementById('outcome-major')?.value.trim();
+  const gpa   = parseFloat(document.getElementById('outcome-gpa')?.value);
 
-  const name       = nameEl?.value.trim();
-  const major      = majorEl?.value.trim();
-  const gpa        = parseFloat(gpaEl?.value);
-  const schoolId   = schoolEl?.value;
-  const schoolName = schoolEl?.options[schoolEl.selectedIndex]?.text;
+  // Collect all checked school checkboxes
+  const checkedBoxes = Array.from(
+    document.querySelectorAll('#outcome-school-list input[name="outcome-school"]:checked')
+  );
 
-  if (!name || !major || !gpa || !schoolId) {
-    showToast('Please fill in all fields.', 3000);
+  if (!name || !major || !gpa) {
+    showToast('Please fill in your name, major, and GPA.', 3000);
+    return;
+  }
+  if (checkedBoxes.length === 0) {
+    showToast('Please select at least one school.', 3000);
     return;
   }
 
   const submitBtn = document.getElementById('btn-modal-submit');
   if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Saving…'; }
 
-  await saveOutcome({
-    studentName:  name,
-    studentMajor: major,
-    studentGpa:   gpa,
-    schoolId,
-    schoolName,
-    accepted:     true,
-    year:         new Date().getFullYear()
-  });
+  const year        = new Date().getFullYear();
+  const schoolNames = [];
+
+  for (const cb of checkedBoxes) {
+    const schoolId   = cb.value;
+    const schoolName = cb.nextElementSibling?.textContent?.replace(/^\S+\s/, '') || schoolId;
+    schoolNames.push(schoolName);
+
+    await saveOutcome({
+      studentName:  name,
+      studentMajor: major,
+      studentGpa:   gpa,
+      schoolId,
+      schoolName,
+      accepted: true,
+      year
+    });
+  }
 
   if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit ✓'; }
   closeOutcomesModal();
-  showToast(`🎉 Congrats ${name}! Your acceptance to ${schoolName} has been recorded!`, 5000);
+
+  const schoolList = schoolNames.join(', ');
+  showToast(`🎉 Congrats ${name}! Acceptances to ${schoolList} have been recorded!`, 5000);
 }
 
 /* ══════════════════════════════════════════════════════════════════

@@ -1167,10 +1167,245 @@ a:hover { text-decoration: underline; }
    SCROLLBAR
 ══════════════════════════════════════════════════════ */
 ::-webkit-scrollbar { width: 5px; }
+
+
+/* ══════════════════════════════════════════════════════
+   AUTH SCREEN
+══════════════════════════════════════════════════════ */
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  margin-top: 32px;
+}
+
+.auth-btn {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.auth-error {
+  background: rgba(240, 92, 124, 0.12);
+  border: 1px solid var(--accent2);
+  border-radius: var(--radius-sm);
+  color: var(--accent2);
+  font-size: 0.85rem;
+  padding: 10px 14px;
+  margin-top: 10px;
+}
+
+/* "Edit" button inline in student chip */
+.edit-profile-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  padding: 2px 10px;
+  margin-left: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.edit-profile-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ══════════════════════════════════════════════════════
+   OUTCOMES CHECKBOX LIST
+══════════════════════════════════════════════════════ */
+
+.school-checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  margin-top: 6px;
+}
+
+.school-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.school-checkbox-item:hover {
+  background: var(--surface);
+}
+.school-checkbox-item input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.school-checkbox-item label {
+  font-size: 0.85rem;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ══════════════════════════════════════════════════════
+   SOCIAL PROOF BADGE (school cards)
+══════════════════════════════════════════════════════ */
+
+.social-proof-badge {
+  font-size: 0.7rem;
+  background: rgba(61, 232, 160, 0.12);
+  border: 1px solid var(--accent3);
+  color: var(--accent3);
+  border-radius: 99px;
+  padding: 2px 9px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════
+   SOCIAL PROOF — STUDENTS LIKE YOU (life plan tab)
+══════════════════════════════════════════════════════ */
+
+.similar-students-section {
+  margin-bottom: 24px;
+}
+
+.similar-students-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent3);
+  margin-bottom: 10px;
+}
+
+.similar-student-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent3);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 0.83rem;
+  color: var(--text);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
+
+/* ══════════════════════════════════════════════════════
+   CAL-GETC CHECKLIST (onboarding step 1)
+══════════════════════════════════════════════════════ */
+
+.calgetc-checklist {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin-top: 8px;
+}
+
+.calgetc-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+}
+
+.calgetc-row input[type="checkbox"] {
+  margin-top: 2px;
+  accent-color: var(--accent3);
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.calgetc-row label {
+  font-size: 0.8rem;
+  color: var(--text);
+  cursor: pointer;
+  line-height: 1.3;
+}
+
+/* ══════════════════════════════════════════════════════
+   COURSE CHECKLIST (requirements tab)
+══════════════════════════════════════════════════════ */
+
+.checklist-counter {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent3);
+  background: rgba(61, 232, 160, 0.1);
+  border: 1px solid var(--accent3);
+  border-radius: 99px;
+  padding: 3px 12px;
+  margin-bottom: 16px;
+  display: inline-block;
+}
+
+.checklist-section {
+  margin-bottom: 20px;
+}
+
+.checklist-section-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+}
+
+.course-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  transition: opacity var(--transition);
+}
+
+.course-row:last-child {
+  border-bottom: none;
+}
+
+.course-row input[type="checkbox"] {
+  margin-top: 3px;
+  accent-color: var(--accent3);
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.course-row.course-completed .course-label {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.course-label {
+  font-size: 0.85rem;
+  color: var(--text);
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.course-note {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 2px;
+  line-height: 1.3;
+}
 
 /* ══════════════════════════════════════════════════════
    RESPONSIVE

@@ -29,10 +29,11 @@ const SCHOOLS = [
     emoji: '🔵',
     size: 'Large',
     minGPA: 3.4,
+    selectivity: 4,
     tagline: 'Top STEM + business',
     tags: ['TAG Eligible', 'IVC Honors→UCI', 'Research'],
     regions: ['SoCal'],
-    strengths: ['Tech / Software', 'Engineering / Hardware', 'Research / Academia', 'Healthcare / Medicine'],
+    strengths: ['Tech / Software', 'Engineering / Hardware', 'Research / Academia', 'Healthcare / Medicine', 'Education', 'History'],
     ivcPerks: 'IVC has a direct Honors-to-Honors articulation with UCI. TAG guarantees admission if you meet the GPA threshold for your major. Being 10 minutes away means a strong transfer community.'
   },
   {
@@ -44,10 +45,11 @@ const SCHOOLS = [
     emoji: '🟡',
     size: 'Large',
     minGPA: 3.7,
+    selectivity: 5,
     tagline: 'Prestige + massive network',
     tags: ['Highly Selective', 'Research', 'Top Ranked'],
     regions: ['SoCal'],
-    strengths: ['Tech / Software', 'Business / Finance', 'Research / Academia', 'Creative / Media', 'Startups / Entrepreneurship']
+    strengths: ['Tech / Software', 'Business / Finance', 'Research / Academia', 'Creative / Media', 'Startups / Entrepreneurship', 'Education', 'History']
   },
   {
     id: 'ucsd',
@@ -58,10 +60,11 @@ const SCHOOLS = [
     emoji: '🌊',
     size: 'Large',
     minGPA: 3.5,
+    selectivity: 4,
     tagline: 'Top biotech + CS',
     tags: ['TAG Eligible', 'Biotech', 'Research-Heavy'],
     regions: ['SoCal'],
-    strengths: ['Engineering / Hardware', 'Healthcare / Medicine', 'Research / Academia', 'Tech / Software'],
+    strengths: ['Engineering / Hardware', 'Healthcare / Medicine', 'Research / Academia', 'Tech / Software', 'History'],
     ivcPerks: 'TAG eligible for most majors. Strong SoCal CC pipeline. World-class biotech and engineering programs.'
   },
   {
@@ -73,10 +76,11 @@ const SCHOOLS = [
     emoji: '🏖',
     size: 'Large',
     minGPA: 3.4,
+    selectivity: 3,
     tagline: 'Research + beautiful campus',
     tags: ['TAG Eligible', 'Research', 'Social Scene'],
     regions: ['SoCal', 'NorCal / Bay Area'],
-    strengths: ['Research / Academia', 'Tech / Software', 'Engineering / Hardware'],
+    strengths: ['Research / Academia', 'Tech / Software', 'Engineering / Hardware', 'History', 'Education'],
     ivcPerks: 'TAG eligible. Strong transfer acceptance culture and excellent transfer support services.'
   },
   {
@@ -88,10 +92,11 @@ const SCHOOLS = [
     emoji: '🐄',
     size: 'Large',
     minGPA: 3.2,
+    selectivity: 3,
     tagline: 'Strong STEM + pre-med',
     tags: ['TAG Eligible', 'Pre-Med', 'Collaborative'],
     regions: ['NorCal / Bay Area'],
-    strengths: ['Healthcare / Medicine', 'Research / Academia', 'Engineering / Hardware'],
+    strengths: ['Healthcare / Medicine', 'Research / Academia', 'Engineering / Hardware', 'Education', 'History'],
     ivcPerks: 'TAG eligible. Excellent TAG acceptance rate for transfers from SoCal CCs.'
   },
   {
@@ -103,10 +108,11 @@ const SCHOOLS = [
     emoji: '🌲',
     size: 'Medium',
     minGPA: 3.0,
+    selectivity: 3,
     tagline: 'CS powerhouse, tech ties',
     tags: ['TAG Eligible', 'CS-Strong', 'Nature Campus'],
     regions: ['NorCal / Bay Area'],
-    strengths: ['Tech / Software', 'Research / Academia', 'Engineering / Hardware'],
+    strengths: ['Tech / Software', 'Research / Academia', 'Engineering / Hardware', 'History'],
     ivcPerks: 'TAG eligible. Very transfer-friendly. CS department has strong Silicon Valley recruiting pipelines.'
   },
   {
@@ -118,10 +124,11 @@ const SCHOOLS = [
     emoji: '🏜',
     size: 'Medium',
     minGPA: 2.8,
+    selectivity: 2,
     tagline: 'Accessible UC, growing fast',
     tags: ['TAG Eligible', 'Pre-Med Friendly', 'Accessible'],
     regions: ['SoCal'],
-    strengths: ['Healthcare / Medicine', 'Research / Academia', 'Engineering / Hardware'],
+    strengths: ['Healthcare / Medicine', 'Research / Academia', 'Engineering / Hardware', 'Education', 'History'],
     ivcPerks: 'One of the most transfer-friendly UCs. Very high TAG acceptance rate. Close to IVC — strong local community.'
   },
   {
@@ -133,6 +140,7 @@ const SCHOOLS = [
     emoji: '☀️',
     size: 'Small',
     minGPA: 2.4,
+    selectivity: 1,
     tagline: 'Newest UC, small classes',
     tags: ['TAG Eligible', 'Scholarships', 'Small Classes'],
     regions: ['NorCal / Bay Area'],
@@ -148,10 +156,11 @@ const SCHOOLS = [
     emoji: '🟠',
     size: 'Large',
     minGPA: 2.5,
+    selectivity: 1,
     tagline: 'Top business + film in OC',
     tags: ['Transfer-Friendly', 'Business', 'Film/Media'],
     regions: ['SoCal'],
-    strengths: ['Business / Finance', 'Creative / Media', 'Government / Policy']
+    strengths: ['Business / Finance', 'Creative / Media', 'Government / Policy', 'Education', 'History']
   },
   {
     id: 'csulb',
@@ -162,10 +171,11 @@ const SCHOOLS = [
     emoji: '⚓',
     size: 'Large',
     minGPA: 2.7,
+    selectivity: 2,
     tagline: 'Strong engineering + nursing',
     tags: ['Transfer-Friendly', 'Engineering', 'Diverse'],
     regions: ['SoCal'],
-    strengths: ['Engineering / Hardware', 'Healthcare / Medicine', 'Business / Finance']
+    strengths: ['Engineering / Hardware', 'Healthcare / Medicine', 'Business / Finance', 'Education', 'History']
   },
   {
     id: 'cpslo',
@@ -176,6 +186,7 @@ const SCHOOLS = [
     emoji: '🏔',
     size: 'Medium',
     minGPA: 3.3,
+    selectivity: 3,
     tagline: '"Learn by doing" — hands-on',
     tags: ['Hands-On', 'Competitive CSU', 'Engineering'],
     regions: ['SoCal', 'NorCal / Bay Area'],
@@ -190,10 +201,11 @@ const SCHOOLS = [
     emoji: '🌴',
     size: 'Large',
     minGPA: 3.0,
+    selectivity: 2,
     tagline: 'Strong business + campus life',
     tags: ['Transfer-Friendly', 'Business', 'Active Campus', 'Social Scene'],
     regions: ['SoCal'],
-    strengths: ['Business / Finance', 'Creative / Media', 'Government / Policy']
+    strengths: ['Business / Finance', 'Creative / Media', 'Government / Policy', 'Education', 'History']
   },
   {
     id: 'cpp',
@@ -204,6 +216,7 @@ const SCHOOLS = [
     emoji: '🌿',
     size: 'Large',
     minGPA: 2.6,
+    selectivity: 1,
     tagline: 'Practical, industry-ready',
     tags: ['Transfer-Friendly', 'Engineering', 'Hands-On'],
     regions: ['SoCal'],
@@ -218,6 +231,7 @@ const SCHOOLS = [
     emoji: '💻',
     size: 'Large',
     minGPA: 3.0,
+    selectivity: 2,
     tagline: 'Silicon Valley campus',
     tags: ['Transfer-Friendly', 'Tech', 'Silicon Valley'],
     regions: ['NorCal / Bay Area'],
@@ -232,6 +246,7 @@ const SCHOOLS = [
     emoji: '⚔️',
     size: 'Large',
     minGPA: 3.8,
+    selectivity: 5,
     tagline: 'Elite private, huge network',
     tags: ['Prestigious', 'Trojan Network', 'Selective'],
     regions: ['SoCal'],
@@ -246,6 +261,7 @@ const SCHOOLS = [
     emoji: '✨',
     size: 'Medium',
     minGPA: 3.2,
+    selectivity: 3,
     tagline: 'Strong transfer + film + biz',
     tags: ['Transfer-Friendly', 'Private', 'Film/Business'],
     regions: ['SoCal'],
@@ -260,6 +276,7 @@ const SCHOOLS = [
     emoji: '🏛',
     size: 'Small',
     minGPA: 3.5,
+    selectivity: 3,
     tagline: 'Liberal arts, small & elite',
     tags: ['Small Classes', 'Liberal Arts', 'Private'],
     regions: ['SoCal'],
@@ -274,6 +291,7 @@ const SCHOOLS = [
     emoji: '🌵',
     size: 'Large',
     minGPA: 3.0,
+    selectivity: 2,
     tagline: 'Massive research + merit aid',
     tags: ['Merit Scholarships', 'Large Campus', 'Out-of-State'],
     regions: ['Out of State'],
@@ -288,6 +306,7 @@ const SCHOOLS = [
     emoji: '🌧',
     size: 'Large',
     minGPA: 3.5,
+    selectivity: 4,
     tagline: 'Top CS + engineering in PNW',
     tags: ['Research', 'CS-Strong', 'Out-of-State'],
     regions: ['Out of State'],
@@ -302,6 +321,7 @@ const SCHOOLS = [
     emoji: '🦆',
     size: 'Large',
     minGPA: 3.0,
+    selectivity: 2,
     tagline: 'Strong journalism + business',
     tags: ['Transfer-Friendly', 'Out-of-State', 'Creative'],
     regions: ['Out of State'],

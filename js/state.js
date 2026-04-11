@@ -36,6 +36,73 @@ let aiData = {};
 /** Current onboarding step (0–3) */
 let currentStep = 0;
 
+/** ID of the logged-in user (uuid from Supabase, or 'guest_<timestamp>') */
+let currentUserId = null;
+
+/* ══════════════════════════════════════════════════════════════════
+   EXTRACURRICULAR DATA (shared between onboarding.js + dashboard.js)
+══════════════════════════════════════════════════════════════════ */
+
+const EXTRACURRICULAR_MAP = {
+  cs_data: [
+    'Coding Club', 'Hackathons', 'Research Assistant',
+    'Open Source Projects', 'Math Club', 'Robotics Club',
+    'Peer Tutoring', 'Student Government',
+    'Part-time Tech Job', 'Personal Projects / GitHub'
+  ],
+  engineering: [
+    'Robotics Club', 'Engineering Club', 'Research Assistant',
+    'Hackathons', 'CAD / Design Projects', 'Part-time Engineering Job',
+    'Math Club', 'Physics Tutoring', 'Peer Tutoring', 'Student Government'
+  ],
+  bio_premed: [
+    'Pre-Med Club', 'Volunteering at Hospital/Clinic', 'Research Lab',
+    'Science Tutoring', 'Nursing Assistant', 'Red Cross / EMT',
+    'Student Government', 'Community Service'
+  ],
+  business: [
+    'Business Club', 'Entrepreneurship Club', 'Investing Club',
+    'Part-time Business Job', 'Marketing Internship',
+    'Student Government', 'Community Service', 'Case Competitions'
+  ],
+  polisci_social: [
+    'Student Government', 'Debate Club', 'Community Organizing',
+    'Internship at Government Office', 'Volunteering',
+    'Model UN', 'Writing for Student Newspaper'
+  ],
+  film_media: [
+    'Film Club', 'Photography Club', 'Student Newspaper',
+    'YouTube / Content Creation', 'Social Media Management',
+    'Community Theatre', 'Podcast Production'
+  ],
+  default: [
+    'Student Government', 'Volunteering', 'Tutoring / Mentoring',
+    'Part-time Job', 'Club Officer Role', 'Community Service',
+    'Research Assistant', 'Athletics'
+  ]
+};
+
+/**
+ * getMajorGroup()
+ * Maps a major string to one of the EXTRACURRICULAR_MAP keys.
+ */
+function getMajorGroup(major) {
+  if (!major) return 'default';
+  const m = major.toLowerCase();
+  if (m.includes('computer science') || m.includes('data science')) return 'cs_data';
+  if (m.includes('engineering')) return 'engineering';
+  if (m.includes('bio') || m.includes('pre-med') || m.includes('chemistry') ||
+      m.includes('neuroscience') || m.includes('nursing') || m.includes('psychology') ||
+      m.includes('kinesiology') || m.includes('public health')) return 'bio_premed';
+  if (m.includes('business') || m.includes('finance') || m.includes('economics') ||
+      m.includes('marketing') || m.includes('accounting')) return 'business';
+  if (m.includes('political') || m.includes('sociology') || m.includes('communication') ||
+      m.includes('history') || m.includes('philosophy') || m.includes('education')) return 'polisci_social';
+  if (m.includes('film') || m.includes('media') || m.includes('graphic') ||
+      m.includes('music') || m.includes('architecture')) return 'film_media';
+  return 'default';
+}
+
 /* ══════════════════════════════════════════════════════════════════
    SHARED UTILITIES
 ══════════════════════════════════════════════════════════════════ */

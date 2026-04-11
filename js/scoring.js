@@ -89,6 +89,17 @@ function score(school, student) {
     if (school.regions && school.regions.includes('SoCal')) s += 9;
   }
 
+  // ── Extracurriculars bonus ────────────────────────────────────
+  const extras = student.extracurriculars || [];
+  if (extras.length >= 3) s += 6;
+  if (extras.length >= 5) s += 4; // stacks to +10 total
+  const researchExtras = ['Research Assistant', 'Research Lab'];
+  const hasResearch    = extras.some(e => researchExtras.includes(e));
+  const schoolHasResearchTag = (school.tags || []).some(t =>
+    t.toLowerCase().includes('research')
+  );
+  if (hasResearch && schoolHasResearchTag) s += 8;
+
   return Math.max(1, Math.min(100, Math.round(s)));
 }
 
@@ -119,10 +130,12 @@ function tierSchools(pool, studentGPA) {
   const safety = [];
 
   for (const item of pool) {
-    const gap = item.school.minGPA - gpa;
-    if      (gap >  0.25) reach .push(item);
-    else if (gap >= -0.25) match.push(item);
-    else                  safety.push(item);
+    const gpaGap   = item.school.minGPA - gpa;
+    const selBonus = (item.school.selectivity || 1) * 0.15;
+    const combined = gpaGap + selBonus;
+    if      (combined >  0.55) reach .push(item);
+    else if (combined >= 0.10) match .push(item);
+    else                       safety.push(item);
   }
 
   // Sort each bucket by score descending

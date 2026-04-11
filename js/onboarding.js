@@ -3,7 +3,7 @@
  * Onboarding flow for Laser2Uni: tooltips, step navigation, form collection.
  * Owner: UI person
  *
- * Depends on: state.js
+ * Depends on: state.js (student, currentStep, EXTRACURRICULAR_MAP, getMajorGroup)
  */
 
 /* ══════════════════════════════════════════════════════════════════
@@ -40,13 +40,29 @@ function positionTooltip(box, e) {
    ONBOARDING
 ══════════════════════════════════════════════════════════════════ */
 
+const CAL_GETC_AREAS = [
+  'Area 1A – English Composition',
+  'Area 1B – Critical Thinking & Composition',
+  'Area 1C – Oral Communication',
+  'Area 2 – Mathematical Concepts & Quantitative Reasoning',
+  'Area 3A – Arts',
+  'Area 3B – Humanities',
+  'Area 4 – Social & Behavioral Sciences',
+  'Area 5A – Physical Sciences',
+  'Area 5B – Biological Sciences',
+  'Area 5C – Laboratory Activity',
+  'Area 6 – Ethnic Studies'
+];
+
 function setupOnboarding() {
-  // GPA slider live display
-  const gpaSlider  = document.getElementById('input-gpa');
-  const gpaDisplay = document.getElementById('gpa-display');
-  if (gpaSlider && gpaDisplay) {
-    gpaSlider.addEventListener('input', () => {
-      gpaDisplay.textContent = parseFloat(gpaSlider.value).toFixed(2);
+  // GPA text input live validation
+  const gpaInput = document.getElementById('input-gpa');
+  if (gpaInput) {
+    gpaInput.addEventListener('blur', () => {
+      const val = parseFloat(gpaInput.value);
+      if (!isNaN(val)) {
+        gpaInput.value = Math.min(4.0, Math.max(1.5, val)).toFixed(2);
+      }
     });
   }
 
@@ -65,12 +81,60 @@ function setupOnboarding() {
     });
   });
 
+  // IGETC pill: show/hide Cal-GETC areas when "In Progress" selected
+  const igetcGroup = document.querySelector('.pill-group[data-key="igetc"]');
+  if (igetcGroup) {
+    igetcGroup.querySelectorAll('.pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        const wrap = document.getElementById('calgetc-areas-wrap');
+        if (!wrap) return;
+        if (pill.dataset.val === 'In Progress') {
+          wrap.classList.remove('hidden');
+        } else {
+          wrap.classList.add('hidden');
+          wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+        }
+      });
+    });
+  }
+
+  // Major change: re-render extracurricular pills
+  document.getElementById('input-major')?.addEventListener('change', e => {
+    renderExtracurricularPills(e.target.value);
+  });
+
+  // Render default extracurricular pills on init
+  renderExtracurricularPills('');
+
   // Nav buttons
   document.getElementById('btn-ob-next').addEventListener('click', advanceStep);
   document.getElementById('btn-ob-back').addEventListener('click', retreatStep);
 
   updateStepUI();
 }
+
+/**
+ * renderExtracurricularPills()
+ * Clears and re-renders extracurricular pills based on major group.
+ */
+function renderExtracurricularPills(major) {
+  const group = document.getElementById('extracurricular-pill-group');
+  if (!group) return;
+
+  const options = EXTRACURRICULAR_MAP[getMajorGroup(major)] || EXTRACURRICULAR_MAP['default'];
+  group.innerHTML = '';
+
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className    = 'pill';
+    btn.dataset.val  = opt;
+    btn.textContent  = opt;
+    btn.addEventListener('click', () => btn.classList.toggle('selected'));
+    group.appendChild(btn);
+  });
+}
+
+/* ── Step navigation ──────────────────────────────────────────── */
 
 function advanceStep() {
   if (!validateStep(currentStep)) return;
@@ -79,8 +143,8 @@ function advanceStep() {
     currentStep++;
     updateStepUI();
   } else {
-    // All 4 steps done → begin swiping
     collectStep(3);
+    saveOnboarding(currentUserId, student); // fire-and-forget
     startSwiping();
   }
 }
@@ -93,29 +157,26 @@ function retreatStep() {
 }
 
 function updateStepUI() {
-  // Show/hide steps
   for (let i = 0; i <= 3; i++) {
     const el = document.getElementById(`step-${i}`);
     if (el) el.classList.toggle('hidden', i !== currentStep);
   }
 
-  // Progress bar (25% per step, filled fully at last step completion)
   const pct  = ((currentStep + 1) / 4) * 100;
   const fill = document.getElementById('progress-fill');
   if (fill) fill.style.width = pct + '%';
 
-  // Step label
   const lbl = document.getElementById('step-indicator');
   if (lbl) lbl.textContent = `Step ${currentStep + 1} of 4`;
 
-  // Back button visibility
   const backBtn = document.getElementById('btn-ob-back');
   if (backBtn) backBtn.style.visibility = currentStep === 0 ? 'hidden' : 'visible';
 
-  // Next button label on last step
   const nextBtn = document.getElementById('btn-ob-next');
   if (nextBtn) nextBtn.textContent = currentStep === 3 ? 'Find My Schools →' : currentStep === 0 ? 'Get Started →' : 'Next →';
 }
+
+/* ── Validation ───────────────────────────────────────────────── */
 
 function validateStep(step) {
   if (step === 0) {
@@ -125,12 +186,16 @@ function validateStep(step) {
     if (!major) { showToast('Please select your intended major.', 3000); return false; }
   }
   if (step === 1) {
+    const gpaVal = parseFloat(document.getElementById('input-gpa')?.value);
     const units  = getSelectedPills('units');
     const igetc  = getSelectedPills('igetc');
     const honors = getSelectedPills('honors');
-    if (units.length === 0)  { showToast('Please select units completed.', 3000);          return false; }
-    if (igetc.length === 0)  { showToast('Please select your IGETC status.', 3000);        return false; }
-    if (honors.length === 0) { showToast('Please select your IVC Honors status.', 3000);   return false; }
+    if (isNaN(gpaVal) || gpaVal < 1.5 || gpaVal > 4.0) {
+      showToast('Please enter a GPA between 1.5 and 4.0.', 3000); return false;
+    }
+    if (units.length === 0)  { showToast('Please select units completed.', 3000);        return false; }
+    if (igetc.length === 0)  { showToast('Please select your IGETC status.', 3000);      return false; }
+    if (honors.length === 0) { showToast('Please select your IVC Honors status.', 3000); return false; }
   }
   if (step === 2) {
     const career = document.getElementById('input-career')?.value.trim();
@@ -138,6 +203,8 @@ function validateStep(step) {
   }
   return true;
 }
+
+/* ── Data collection ──────────────────────────────────────────── */
 
 function collectStep(step) {
   if (step === 0) {
@@ -149,11 +216,16 @@ function collectStep(step) {
     student.units  = getSelectedPills('units')[0]  || '';
     student.igetc  = getSelectedPills('igetc')[0]  || '';
     student.honors = getSelectedPills('honors')[0] || '';
+    // Collect Cal-GETC areas completed (only relevant if "In Progress")
+    student.igetcCompleted = Array.from(
+      document.querySelectorAll('#calgetc-areas-wrap input[type="checkbox"]:checked')
+    ).map(cb => cb.value);
   }
   if (step === 2) {
-    student.career     = document.getElementById('input-career')?.value.trim() || '';
-    student.industries = getSelectedPills('industries');
-    student.grad       = getSelectedPills('grad')[0] || '';
+    student.career          = document.getElementById('input-career')?.value.trim() || '';
+    student.industries      = getSelectedPills('industries');
+    student.grad            = getSelectedPills('grad')[0] || '';
+    student.extracurriculars = getSelectedPills('extracurriculars');
   }
   if (step === 3) {
     student.size       = getSelectedPills('size')[0] || 'No preference';

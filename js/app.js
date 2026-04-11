@@ -8,6 +8,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   initSupabase();
+  setupAuthScreen();
   setupTooltips();
   setupOnboarding();
   setupSwipeButtons();

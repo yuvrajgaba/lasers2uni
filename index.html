@@ -12,7 +12,7 @@
   <!-- ═══════════════════════════════════════════
        SCREEN 1: ONBOARDING
   ═══════════════════════════════════════════ -->
-  <div id="screen-onboarding" class="screen active">
+  <div id="screen-onboarding" class="screen hidden">
     <div class="onboarding-wrap">
 
       <div class="ob-logo">Lasers<span>2</span>Uni</div>
@@ -104,6 +104,26 @@
           <button class="pill" data-val="Don't Know">Don't Know</button>
         </div>
 
+        <!-- Cal-GETC areas — shown only when "In Progress" is selected -->
+        <div id="calgetc-areas-wrap" class="hidden">
+          <label class="field-label" style="margin-top:12px">
+            Which Cal-GETC areas have you completed so far?
+          </label>
+          <div class="calgetc-checklist">
+            <div class="calgetc-row"><input type="checkbox" id="cg-1a" value="Area 1A – English Composition"><label for="cg-1a">Area 1A – English Composition</label></div>
+            <div class="calgetc-row"><input type="checkbox" id="cg-1b" value="Area 1B – Critical Thinking &amp; Composition"><label for="cg-1b">Area 1B – Critical Thinking &amp; Composition</label></div>
+            <div class="calgetc-row"><input type="checkbox" id="cg-1c" value="Area 1C – Oral Communication"><label for="cg-1c">Area 1C – Oral Communication</label></div>
+            <div class="calgetc-row"><input type="checkbox" id="cg-2" value="Area 2 – Mathematical Concepts &amp; Quantitative Reasoning"><label for="cg-2">Area 2 – Mathematical Concepts &amp; Quantitative Reasoning</label></div>
+            <div class="calgetc-row"><input type="checkbox" id="cg-3a" value="Area 3A – Arts"><label for="cg-3a">Area 3A – Arts</label></div>
+            <div class="calgetc-row"><input type="checkbox" id="cg-3b" value="Area 3B – Humanities"><label for="cg-3b">Area 3B – Humanities</label></div>
+            <div class="calgetc-row"><input type="checkbox" id="cg-4" value="Area 4 – Social &amp; Behavioral Sciences"><label for="cg-4">Area 4 – Social &amp; Behavioral Sciences</label></div>
+            <div class="calgetc-row"><input type="checkbox" id="cg-5a" value="Area 5A – Physical Sciences"><label for="cg-5a">Area 5A – Physical Sciences</label></div>
+            <div class="calgetc-row"><input type="checkbox" id="cg-5b" value="Area 5B – Biological Sciences"><label for="cg-5b">Area 5B – Biological Sciences</label></div>
+            <div class="calgetc-row"><input type="checkbox" id="cg-5c" value="Area 5C – Laboratory Activity"><label for="cg-5c">Area 5C – Laboratory Activity</label></div>
+            <div class="calgetc-row"><input type="checkbox" id="cg-6" value="Area 6 – Ethnic Studies"><label for="cg-6">Area 6 – Ethnic Studies</label></div>
+          </div>
+        </div>
+
         <label class="field-label">
           IVC Honors Program
           <button class="info-badge" data-tooltip="IVC Honors gives you access to the Honors-to-Honors pathway to UCI and strengthens TAG eligibility. TAG (Transfer Admission Guarantee) lets qualifying IVC students lock in a UC admission before leaving IVC — if you meet the GPA threshold for your major.">?</button>
@@ -140,6 +160,15 @@
           <button class="pill" data-val="Maybe someday">Maybe someday</button>
           <button class="pill" data-val="No thanks">No thanks</button>
           <button class="pill" data-val="Don't know yet">Don't know yet</button>
+        </div>
+
+        <label class="field-label">
+          Extracurriculars &amp; Activities
+          <span class="muted-hint">(pick all that apply)</span>
+        </label>
+        <div class="pill-group" id="extracurricular-pill-group"
+             data-key="extracurriculars" data-multi="true">
+          <!-- Populated dynamically by onboarding.js based on major -->
         </div>
       </div>
 
@@ -247,7 +276,7 @@
     <div class="tab-bar" id="tab-bar">
       <button class="tab active" data-tab="schools">Schools</button>
       <button class="tab" data-tab="requirements">Requirements</button>
-      <button class="tab" data-tab="life-plan">Life Plan</button>
+      <button class="tab" data-tab="your-path">Your Path</button>
     </div>
 
     <div class="tab-pane active" id="tab-schools">
@@ -256,7 +285,7 @@
     <div class="tab-pane hidden" id="tab-requirements">
       <!-- Injected by ui.js -->
     </div>
-    <div class="tab-pane hidden" id="tab-life-plan">
+    <div class="tab-pane hidden" id="tab-your-path">
       <!-- Injected by ui.js -->
     </div>
 
@@ -272,9 +301,10 @@
       <input type="text" id="outcome-name" class="text-input" placeholder="Your first name" />
       <input type="text" id="outcome-major" class="text-input" placeholder="Your major" />
       <input type="number" id="outcome-gpa" class="text-input" placeholder="Your GPA (e.g. 3.6)" step="0.01" min="1.5" max="4.0" />
-      <select id="outcome-school" class="select-input">
-        <option value="" disabled selected>Which school accepted you?</option>
-      </select>
+      <label class="field-label">Which school(s) accepted you?</label>
+      <div id="outcome-school-list" class="school-checkbox-list">
+        <!-- Checkboxes injected by outcomes.js when modal opens -->
+      </div>
       <div class="modal-actions">
         <button class="btn-ghost" id="btn-modal-cancel">Cancel</button>
         <button class="btn-primary" id="btn-modal-submit">Submit ✓</button>
@@ -293,6 +323,7 @@
   ═══════════════════════════════════════════ -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/schools.js"></script>
+  <script src="js/courses.js"></script>
   <script src="js/scoring.js"></script>
   <script src="js/ai.js"></script>
   <script src="js/supabase.js"></script>
@@ -301,6 +332,7 @@
   <script src="js/swipe.js"></script>
   <script src="js/dashboard.js"></script>
   <script src="js/outcomes.js"></script>
+  <script src="js/auth.js"></script>
   <script src="js/app.js"></script>
 
 </body>

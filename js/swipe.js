@@ -228,6 +228,7 @@ function performSwipe(direction) {
       if      (direction === 'right') likedItems  .push(item);
       else if (direction === 'left')  passedItems .push(item);
       else                            skippedItems.push(item);
+      saveSwipe(currentUserId, item.school.id, direction); // fire-and-forget
     }
 
     swipeCount++;

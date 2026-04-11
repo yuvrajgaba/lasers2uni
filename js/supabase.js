@@ -10,8 +10,8 @@
  * ──────────────────────────────────────────────────────────────────
  */
 
-const SUPABASE_URL      = ''; // ← e.g. 'https://abcdefgh.supabase.co'
-const SUPABASE_ANON_KEY = ''; // ← long eyJ... string from project settings
+const SUPABASE_URL      = 'https://xwfpmsduypjuslmiuuue.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3ZnBtc2R1eXBqdXNsbWl1dXVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NjAxNTMsImV4cCI6MjA5MTQzNjE1M30.I4xsgewjoe3BZeNwU_tC1GE85HhTprgB-EnNSJ3BZS0';
 
 /** @type {import('@supabase/supabase-js').SupabaseClient | null} */
 let _client = null;
@@ -168,20 +168,284 @@ async function getRecentOutcomes(limit = 10) {
 
 /**
  * populateOutcomeSchoolSelect()
- * Fills the school dropdown in the outcomes modal from the SCHOOLS array.
- * Called by ui.js when the modal opens.
+ * Fills the school checkbox list in the outcomes modal from the SCHOOLS array.
+ * Called by outcomes.js when the modal opens.
  */
 function populateOutcomeSchoolSelect() {
-  const select = document.getElementById('outcome-school');
-  if (!select || typeof SCHOOLS === 'undefined') return;
+  const list = document.getElementById('outcome-school-list');
+  if (!list || typeof SCHOOLS === 'undefined') return;
 
-  // Clear existing options except the placeholder
-  while (select.options.length > 1) select.remove(1);
+  list.innerHTML = '';
 
   SCHOOLS.forEach(school => {
-    const opt   = document.createElement('option');
-    opt.value   = school.id;
-    opt.textContent = school.name;
-    select.appendChild(opt);
+    const item = document.createElement('div');
+    item.className = 'school-checkbox-item';
+
+    const cb = document.createElement('input');
+    cb.type  = 'checkbox';
+    cb.id    = `oc-school-${school.id}`;
+    cb.value = school.id;
+    cb.name  = 'outcome-school';
+
+    const lbl = document.createElement('label');
+    lbl.htmlFor     = cb.id;
+    lbl.textContent = `${school.emoji} ${school.name}`;
+
+    item.appendChild(cb);
+    item.appendChild(lbl);
+    list.appendChild(item);
   });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AUTH — Users & Sessions
+═══════════════════════════════════════════════════════════════ */
+
+/**
+ * upsertUser()
+ * Looks up a user by username.
+ * - If found: verifies password and returns { user } or { error: 'wrong_password' }
+ * - If not found: creates a new user and returns { user }
+ * - Fails silently offline: returns a local guest-like user object
+ *
+ * @param {string} username
+ * @param {string} password  plain-text (demo app)
+ * @returns {Promise<{user?: Object, error?: string}>}
+ */
+async function upsertUser(username, password) {
+  const client = getClient();
+  if (!client) {
+    // Offline / unconfigured — return a local pseudo-user so the app still works
+    return { user: { id: 'local_' + Date.now(), username } };
+  }
+
+  try {
+    const { data: existing, error: fetchErr } = await client
+      .from('users')
+      .select('*')
+      .eq('username', username)
+      .maybeSingle();
+
+    if (fetchErr) return { error: fetchErr.message };
+
+    if (existing) {
+      if (existing.password !== password) return { error: 'wrong_password' };
+      return { user: existing };
+    }
+
+    // New user
+    const { data, error } = await client
+      .from('users')
+      .insert([{ username, password }])
+      .select()
+      .single();
+
+    if (error) return { error: error.message };
+    return { user: data };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+/**
+ * saveSession()
+ * Logs a new session row. Fire-and-forget.
+ *
+ * @param {string} userId
+ */
+async function saveSession(userId) {
+  const client = getClient();
+  if (!client || !userId || userId.startsWith('guest_') || userId.startsWith('local_')) return;
+  try {
+    await client.from('sessions').insert([{ user_id: userId }]);
+  } catch (_) {}
+}
+
+/**
+ * getLatestOnboarding()
+ * Returns the most recent onboarding row for a user, or null.
+ *
+ * @param {string} userId
+ * @returns {Promise<Object|null>}
+ */
+async function getLatestOnboarding(userId) {
+  const client = getClient();
+  if (!client || !userId || userId.startsWith('guest_') || userId.startsWith('local_')) return null;
+  try {
+    const { data, error } = await client
+      .from('onboarding')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) return null;
+    return data;
+  } catch (_) { return null; }
+}
+
+/**
+ * saveOnboarding()
+ * Saves completed onboarding form data for a user. Fire-and-forget.
+ *
+ * @param {string} userId
+ * @param {Object} studentObj
+ */
+async function saveOnboarding(userId, studentObj) {
+  const client = getClient();
+  if (!client || !userId) return;
+  try {
+    await client.from('onboarding').insert([{
+      user_id:          userId,
+      name:             studentObj.name             || null,
+      major:            studentObj.major            || null,
+      gpa:              parseFloat(studentObj.gpa)  || null,
+      units:            studentObj.units            || null,
+      igetc:            studentObj.igetc            || null,
+      igetc_completed:  studentObj.igetcCompleted   || [],
+      honors:           studentObj.honors           || null,
+      career:           studentObj.career           || null,
+      industries:       studentObj.industries       || [],
+      grad:             studentObj.grad             || null,
+      size:             studentObj.size             || null,
+      regions:          studentObj.regions          || [],
+      priorities:       studentObj.priorities       || [],
+      extracurriculars: studentObj.extracurriculars || [],
+      extra:            studentObj.extra            || null
+    }]);
+  } catch (_) {}
+}
+
+/**
+ * getUserOnboarding()
+ * Returns the most recent onboarding row for a user, or null.
+ * Alias for getLatestOnboarding — used in auth.js.
+ */
+async function getUserOnboarding(userId) {
+  return getLatestOnboarding(userId);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COURSE PROGRESS
+═══════════════════════════════════════════════════════════════ */
+
+/**
+ * saveCourseProgress()
+ * Upserts a course completion state for a user. Fire-and-forget.
+ */
+async function saveCourseProgress(userId, schoolId, major, courseKey, completed) {
+  const client = getClient();
+  if (!client || !userId || userId.startsWith('guest_') || userId.startsWith('local_')) return;
+  try {
+    await client.from('course_progress').upsert([{
+      user_id:      userId,
+      school_id:    schoolId,
+      major,
+      course_key:   courseKey,
+      completed,
+      completed_at: completed ? new Date().toISOString() : null,
+      updated_at:   new Date().toISOString()
+    }], { onConflict: 'user_id,school_id,major,course_key' });
+  } catch (_) {}
+}
+
+/**
+ * getCourseProgress()
+ * Returns all course progress rows for a user + school + major.
+ */
+async function getCourseProgress(userId, schoolId, major) {
+  const client = getClient();
+  if (!client || !userId) return [];
+  try {
+    const { data, error } = await client
+      .from('course_progress')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('school_id', schoolId)
+      .eq('major', major);
+    if (error) return [];
+    return data || [];
+  } catch (_) { return []; }
+}
+
+/**
+ * getAllCourseProgress()
+ * Returns all course progress rows for a user across all schools.
+ * Used when a returning user loads the dashboard to restore state.
+ */
+async function getAllCourseProgress(userId) {
+  const client = getClient();
+  if (!client || !userId) return [];
+  try {
+    const { data, error } = await client
+      .from('course_progress')
+      .select('*')
+      .eq('user_id', userId);
+    if (error) return [];
+    return data || [];
+  } catch (_) { return []; }
+}
+
+/**
+ * saveSwipe()
+ * Records a single card swipe. Fire-and-forget.
+ *
+ * @param {string} userId
+ * @param {string} schoolId
+ * @param {string} direction  'right' | 'left' | 'up'
+ */
+async function saveSwipe(userId, schoolId, direction) {
+  const client = getClient();
+  if (!client || !userId || !schoolId) return;
+  try {
+    await client.from('swipes').insert([{ user_id: userId, school_id: schoolId, direction }]);
+  } catch (_) {}
+}
+
+/**
+ * getOutcomesForSchool()
+ * Fetches all accepted outcomes for a given school.
+ *
+ * @param {string} schoolId
+ * @returns {Promise<Array>}
+ */
+async function getOutcomesForSchool(schoolId) {
+  const client = getClient();
+  if (!client) return [];
+  try {
+    const { data, error } = await client
+      .from('outcomes')
+      .select('*')
+      .eq('school_id', schoolId)
+      .eq('accepted', true);
+    if (error) return [];
+    return data || [];
+  } catch (_) { return []; }
+}
+
+/**
+ * getSimilarStudentOutcomes()
+ * Fetches accepted outcomes for a school where the student's GPA
+ * is within ±0.3 of the given GPA.
+ *
+ * @param {number} studentGpa
+ * @param {string} schoolId
+ * @returns {Promise<Array>}
+ */
+async function getSimilarStudentOutcomes(studentGpa, schoolId) {
+  const client = getClient();
+  if (!client) return [];
+  try {
+    const lo = studentGpa - 0.3;
+    const hi = studentGpa + 0.3;
+    const { data, error } = await client
+      .from('outcomes')
+      .select('*')
+      .eq('school_id', schoolId)
+      .eq('accepted', true)
+      .gte('student_gpa', lo)
+      .lte('student_gpa', hi);
+    if (error) return [];
+    return data || [];
+  } catch (_) { return []; }
 }
