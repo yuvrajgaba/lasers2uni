@@ -1,19 +1,19 @@
 /* ═══════════════════════════════════════════════════
    LASER2UNI — Design System
-   Dark theme · Syne headings · DM Sans body
+   Dark navy theme · Satoshi · Turquoise accent
 ═══════════════════════════════════════════════════ */
 
 :root {
-  --bg:       #0a0a0f;
-  --surface:  #13131a;
-  --surface2: #1c1c26;
-  --border:   #2a2a38;
-  --accent:   #7c6df0;
+  --bg:       #0b1a2b;
+  --surface:  #112035;
+  --surface2: #162540;
+  --border:   #1e3355;
+  --accent:   #1e90ff;
   --accent2:  #f05c7c;
   --accent3:  #3de8a0;
   --gold:     #ffb432;
-  --text:     #f0f0f8;
-  --muted:    #6b6b88;
+  --text:     #f5f0dc;
+  --muted:    #7a92b8;
 
   /* School type colors */
   --uc-grad:      linear-gradient(135deg, #7c6df0 0%, #5a4bc4 100%);
@@ -32,7 +32,7 @@
 html { font-size: 16px; -webkit-text-size-adjust: 100%; }
 
 body {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Satoshi', system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -41,7 +41,7 @@ body {
 }
 
 h1, h2, h3, h4 {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Satoshi', system-ui, sans-serif;
   font-weight: 700;
 }
 
@@ -58,15 +58,20 @@ a:hover { text-decoration: underline; }
 
 /* ─── Logo ─── */
 .ob-logo, .logo-sm {
-  font-family: 'Syne', sans-serif;
-  font-weight: 800;
+  font-family: 'Satoshi', system-ui, sans-serif;
+  font-weight: 900;
   color: var(--text);
-  letter-spacing: -0.5px;
+  letter-spacing: -1px;
   user-select: none;
 }
-.ob-logo { font-size: 2rem; }
-.logo-sm { font-size: 1.2rem; }
-.ob-logo span, .logo-sm span { color: var(--accent); }
+.ob-logo {
+  font-size: clamp(2.8rem, 8vw, 4rem);
+  text-align: center;
+  letter-spacing: -2px;
+}
+.logo-sm { font-size: 1.2rem; letter-spacing: -0.5px; }
+.ob-logo span { color: #1e90ff; }
+.logo-sm span  { color: var(--accent); }
 
 /* ─── Utility ─── */
 .hidden { display: none !important; }
@@ -78,7 +83,9 @@ a:hover { text-decoration: underline; }
 ══════════════════════════════════════════════════════ */
 #screen-onboarding {
   align-items: center;
-  padding: 32px 16px 80px;
+  justify-content: center;
+  padding: 48px 24px 80px;
+  background: var(--bg);
 }
 
 .onboarding-wrap {
@@ -86,13 +93,16 @@ a:hover { text-decoration: underline; }
   max-width: 520px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 22px;
 }
 
 .ob-tagline {
   color: var(--muted);
-  font-size: 0.95rem;
-  margin-top: -10px;
+  font-size: 1rem;
+  margin-top: -12px;
+  text-align: center;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
 }
 
 /* Progress bar */
@@ -105,7 +115,7 @@ a:hover { text-decoration: underline; }
 }
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  background: var(--accent);
   border-radius: 99px;
   transition: width 0.4s ease;
 }
@@ -121,7 +131,7 @@ a:hover { text-decoration: underline; }
 .step.hidden { display: none; }
 .step-title {
   font-size: 1.45rem;
-  font-family: 'Syne', sans-serif;
+  font-family: 'Satoshi', system-ui, sans-serif;
   font-weight: 700;
   color: var(--text);
 }
@@ -144,7 +154,7 @@ a:hover { text-decoration: underline; }
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text);
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Satoshi', system-ui, sans-serif;
   font-size: 0.95rem;
   padding: 12px 14px;
   outline: none;
@@ -185,11 +195,11 @@ a:hover { text-decoration: underline; }
   background: var(--accent);
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 0 0 4px rgba(124, 109, 240, 0.25);
+  box-shadow: 0 0 0 4px rgba(30, 144, 255, 0.25);
   transition: box-shadow var(--transition);
 }
 .gpa-slider::-webkit-slider-thumb:hover {
-  box-shadow: 0 0 0 6px rgba(124, 109, 240, 0.35);
+  box-shadow: 0 0 0 6px rgba(30, 144, 255, 0.35);
 }
 .gpa-slider::-moz-range-thumb {
   width: 22px; height: 22px;
@@ -199,12 +209,12 @@ a:hover { text-decoration: underline; }
   border: none;
 }
 .gpa-display {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Satoshi', system-ui, sans-serif;
   font-size: 1rem;
   font-weight: 700;
   color: var(--accent);
   margin-left: 8px;
-  background: rgba(124,109,240,0.12);
+  background: rgba(30, 144, 255, 0.12);
   padding: 2px 8px;
   border-radius: 6px;
 }
@@ -228,7 +238,7 @@ a:hover { text-decoration: underline; }
   color: var(--muted);
   border-radius: 99px;
   padding: 7px 16px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Satoshi', system-ui, sans-serif;
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
@@ -242,7 +252,8 @@ a:hover { text-decoration: underline; }
 .pill.selected {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: #f5f0dc;
+  font-weight: 600;
 }
 
 /* Info badge / tooltip */
@@ -290,25 +301,30 @@ a:hover { text-decoration: underline; }
 
 .btn-primary {
   background: var(--accent);
-  color: #fff;
+  color: #f5f0dc;
   border: none;
   border-radius: var(--radius-sm);
-  padding: 12px 28px;
-  font-family: 'DM Sans', sans-serif;
+  padding: 13px 32px;
+  font-family: 'Satoshi', system-ui, sans-serif;
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: all var(--transition);
+  letter-spacing: 0.01em;
 }
-.btn-primary:hover { background: #9180f4; transform: translateY(-1px); }
+.btn-primary:hover {
+  filter: brightness(1.2);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(30, 144, 255, 0.35);
+}
 
 .btn-ghost {
   background: transparent;
   color: var(--muted);
   border: 1.5px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 12px 22px;
-  font-family: 'DM Sans', sans-serif;
+  padding: 13px 22px;
+  font-family: 'Satoshi', system-ui, sans-serif;
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;

@@ -114,7 +114,7 @@ function updateStepUI() {
 
   // Next button label on last step
   const nextBtn = document.getElementById('btn-ob-next');
-  if (nextBtn) nextBtn.textContent = currentStep === 3 ? 'Find My Schools →' : 'Next →';
+  if (nextBtn) nextBtn.textContent = currentStep === 3 ? 'Find My Schools →' : currentStep === 0 ? 'Get Started →' : 'Next →';
 }
 
 function validateStep(step) {
