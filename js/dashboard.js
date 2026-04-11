@@ -1,23 +1,30 @@
 /**
  * dashboard.js
- * Dashboard rendering for Laser2Uni: Schools, Requirements, and Your Path tabs.
+ * Dashboard rendering for Laser2Uni.
  * Owner: UI person
  *
- * Depends on: state.js (student, tiers, aiData, EXTRACURRICULAR_MAP, getMajorGroup),
- *             supabase.js, courses.js
+ * Tabs: Balanced (default) | Best For You | Rankings | Requirements | Your Path
+ *
+ * Depends on: state.js, scoring.js, supabase.js, courses.js
  */
 
 /* ══════════════════════════════════════════════════════════════════
-   DASHBOARD
+   BUILD DASHBOARD
 ══════════════════════════════════════════════════════════════════ */
 
-function buildDashboard() {
+function buildDashboard(prestigeListArg, fitListArg, balancedListArg) {
+  prestigeList = prestigeListArg || [];
+  fitList      = fitListArg      || [];
+  balancedList = balancedListArg || [];
+
   const chip = document.getElementById('student-chip');
   if (chip) {
-    chip.textContent = `${student.name} · ${student.major} · ${student.gpa} GPA`;
+    chip.textContent = `${student.name} - ${student.major} - ${student.gpa} GPA`;
   }
 
-  renderSchoolsTab();
+  renderBalancedTab();
+  renderFitTab();
+  renderRankingsTab();
   renderRequirementsTab();
   renderYourPathTab();
   addOutcomesFAB();
@@ -38,57 +45,51 @@ function setupDashboardTabs() {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   SCHOOLS TAB
+   SHARED SCHOOL CARD BUILDER
 ══════════════════════════════════════════════════════════════════ */
 
-function renderSchoolsTab() {
-  const pane = document.getElementById('tab-schools');
-  if (!pane) return;
-  pane.innerHTML = '';
-
-  const tierConfig = [
-    { key: 'reach',  label: 'Reach',  headClass: 'reach-head',  admitClass: 'reach'  },
-    { key: 'match',  label: '50-50',  headClass: 'match-head',  admitClass: 'match'  },
-    { key: 'safety', label: 'Safety', headClass: 'safety-head', admitClass: 'safety' }
-  ];
-
-  tierConfig.forEach(({ key, label, headClass, admitClass }) => {
-    const schools = tiers[key];
-    if (!schools || schools.length === 0) return;
-
-    const section = document.createElement('div');
-    section.className = 'tier-section';
-
-    const heading = document.createElement('div');
-    heading.className   = `tier-heading ${headClass}`;
-    heading.textContent = label;
-    section.appendChild(heading);
-
-    schools.forEach(item => {
-      const card = buildDashboardSchoolCard(item, admitClass);
-      section.appendChild(card);
-    });
-
-    pane.appendChild(section);
-  });
-}
-
-function buildDashboardSchoolCard(item, admitClass) {
+function buildRankedSchoolCard(item, rank, topLabel) {
   const { school, score: s, fit } = item;
   const typeClass = school.type.toLowerCase().replace(/ /g, '-');
   const schoolAI  = aiData?.schools?.[school.id] || {};
-  const admitLabels = { reach: 'Reach', match: '50-50', safety: 'Safety' };
+
+  // TAG eligibility
+  const studentGpa    = parseFloat(student.gpa || 0);
+  const tagExcluded   = (school.tagExclusions || []).includes(student.major);
+  const isTagEligible = school.tagGpa != null && !tagExcluded && studentGpa >= school.tagGpa;
+  const isTagClose    = !isTagEligible && school.tagGpa != null && !tagExcluded
+    && studentGpa >= school.tagGpa - 0.2;
+
+  // Major-specific GPA minimum
+  const majorMinGpa = (school.majorMinGpa || {})[student.major]
+    ?? (school.majorMinGpa || {})['default']
+    ?? school.minGPA;
+
+  // Competitiveness
+  let comp = (school.competitiveness || {})[student.major];
+  if (comp == null) {
+    for (const [key, val] of Object.entries(school.competitiveness || {})) {
+      if (key !== 'default' && student.major.toLowerCase().includes(key.toLowerCase())) {
+        comp = val; break;
+      }
+    }
+  }
+  if (comp == null) comp = (school.competitiveness || {})['default'] ?? 3;
+  const compLabel = comp <= 2 ? 'Accessible' : comp === 3 ? 'Competitive'
+    : comp === 4 ? 'Very Competitive' : 'Highly Selective';
+  const compColor = comp <= 2 ? 'var(--accent3)' : comp === 3 ? 'var(--gold)'
+    : comp === 4 ? '#f09040' : 'var(--accent2)';
+
+  const admitPct = school.admitRate ? `${Math.round(school.admitRate * 100)}%` : 'N/A';
+  const projectsHtml = (schoolAI.projects || []).map(p => `<li>${p}</li>`).join('');
 
   const card = document.createElement('div');
   card.className = 'school-card';
 
-  const projectsHtml = (schoolAI.projects || [])
-    .map(p => `<li>${p}</li>`)
-    .join('');
-
   card.innerHTML = `
     <div class="school-card-header">
       <div class="school-card-stripe ${typeClass}"></div>
+      ${rank ? `<div class="rank-num">${rank}</div>` : ''}
       <div style="flex-shrink:0;width:40px;height:40px;display:flex;align-items:center;justify-content:center">
         ${school.logo
           ? `<img src="${school.logo}" alt="${school.name}" style="width:40px;height:40px;object-fit:contain" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none;font-size:1.5rem">${school.emoji}</span>`
@@ -96,13 +97,28 @@ function buildDashboardSchoolCard(item, admitClass) {
       </div>
       <div class="school-card-info">
         <div class="school-card-name">${school.name}</div>
-        <div class="school-card-loc">${school.loc} · Min GPA ${school.minGPA.toFixed(1)}</div>
+        <div class="school-card-loc">${school.loc}</div>
       </div>
-      <div class="school-card-chips">
-        <span class="admit-chip ${admitClass}">${admitLabels[admitClass]}</span>
-        <span class="fit-chip ${fit.cssClass}">${fit.label}</span>
-      </div>
-      <span class="school-card-toggle">▾</span>
+      <span class="school-card-toggle">+</span>
+    </div>
+    <div class="card-badge-row">
+      ${topLabel ? `<span class="top-pick-badge">${topLabel}</span>` : ''}
+      ${isTagEligible ? `<span class="tag-elig-badge">TAG Eligible</span>` : ''}
+      ${isTagClose    ? `<span class="tag-close-badge">TAG: Close</span>` : ''}
+    </div>
+    <div class="card-stat-row">
+      <span class="card-stat">
+        <span class="card-stat-label">Admit Rate</span>${admitPct}
+      </span>
+      <span class="card-stat">
+        <span class="card-stat-label">Min GPA</span>${typeof majorMinGpa === 'number' ? majorMinGpa.toFixed(1) : majorMinGpa}
+      </span>
+      <span class="card-stat" style="color:${compColor}">
+        <span class="card-stat-label">Competition</span>${compLabel}
+      </span>
+      <span class="card-stat" style="color:${fit.colorVar}">
+        <span class="card-stat-label">Fit Score</span>${s}
+      </span>
     </div>
     <div class="school-card-body">
       ${schoolAI.admission_tips ? `
@@ -124,26 +140,23 @@ function buildDashboardSchoolCard(item, admitClass) {
 
   card.querySelector('.school-card-header').addEventListener('click', () => {
     card.classList.toggle('expanded');
+    card.querySelector('.school-card-toggle').textContent =
+      card.classList.contains('expanded') ? '-' : '+';
   });
 
-  // Async: inject social proof badge after render (non-blocking)
-  getSimilarStudentOutcomes(parseFloat(student.gpa), school.id).then(outcomes => {
+  // Async social proof badge (non-blocking)
+  getSimilarStudentOutcomes(studentGpa, school.id).then(outcomes => {
     if (!outcomes || outcomes.length === 0) return;
-    const chips = card.querySelector('.school-card-chips');
-    if (chips) {
+    const statRow = card.querySelector('.card-stat-row');
+    if (statRow) {
       const badge = document.createElement('span');
       badge.style.cssText = `
-        font-size: 0.7rem;
-        font-weight: 600;
-        padding: 3px 9px;
-        border-radius: 99px;
-        background: rgba(61,232,160,0.15);
-        color: var(--accent3);
-        margin-right: 4px;
-        white-space: nowrap;
+        font-size: 0.7rem; font-weight: 600; padding: 3px 9px;
+        border-radius: 99px; background: rgba(61,232,160,0.15);
+        color: var(--accent3); white-space: nowrap;
       `;
       badge.textContent = `${outcomes.length} similar student${outcomes.length > 1 ? 's' : ''} got in`;
-      chips.insertBefore(badge, chips.firstChild);
+      statRow.appendChild(badge);
     }
   }).catch(() => {});
 
@@ -151,7 +164,176 @@ function buildDashboardSchoolCard(item, admitClass) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   REQUIREMENTS TAB — Course Checklist
+   BALANCED TAB (default / recommended)
+══════════════════════════════════════════════════════════════════ */
+
+function renderBalancedTab() {
+  const pane = document.getElementById('tab-balanced');
+  if (!pane) return;
+  pane.innerHTML = '';
+
+  const header = document.createElement('div');
+  header.className = 'list-tab-header';
+  header.innerHTML = `
+    <h3 class="list-tab-title">Our Recommendation</h3>
+    <p class="list-tab-sub">A blend of prestige and personal fit - the honest list we'd give a friend.</p>
+  `;
+  pane.appendChild(header);
+
+  if (!balancedList || balancedList.length === 0) {
+    pane.innerHTML += '<p class="empty-note">Swipe more schools to get recommendations.</p>';
+    return;
+  }
+
+  balancedList.forEach((item, i) => {
+    const label = i === 0 ? 'Top Pick' : null;
+    pane.appendChild(buildRankedSchoolCard(item, i + 1, label));
+  });
+
+  renderPassedSection(pane);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   FIT TAB (best for you)
+══════════════════════════════════════════════════════════════════ */
+
+function renderFitTab() {
+  const pane = document.getElementById('tab-fit');
+  if (!pane) return;
+  pane.innerHTML = '';
+
+  const topPriorities = (student.priorities || []).slice(0, 3).join(', ') || 'your preferences';
+  const header = document.createElement('div');
+  header.className = 'list-tab-header';
+  header.innerHTML = `
+    <h3 class="list-tab-title">Ranked by Your Preferences</h3>
+    <p class="list-tab-sub">These schools match what YOU said matters: ${topPriorities}.</p>
+  `;
+  pane.appendChild(header);
+
+  if (!fitList || fitList.length === 0) {
+    pane.innerHTML += '<p class="empty-note">Swipe more schools to see your best matches.</p>';
+    return;
+  }
+
+  fitList.forEach((item, i) => {
+    const label = i === 0 ? 'Best Match' : null;
+    pane.appendChild(buildRankedSchoolCard(item, i + 1, label));
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   RANKINGS TAB (prestige)
+══════════════════════════════════════════════════════════════════ */
+
+function renderRankingsTab() {
+  const pane = document.getElementById('tab-rankings');
+  if (!pane) return;
+  pane.innerHTML = '';
+
+  const header = document.createElement('div');
+  header.className = 'list-tab-header';
+  header.innerHTML = `
+    <h3 class="list-tab-title">Ranked by Prestige</h3>
+    <p class="list-tab-sub">The most selective schools you liked, ordered by reputation and admit rate.</p>
+  `;
+  pane.appendChild(header);
+
+  if (!prestigeList || prestigeList.length === 0) {
+    pane.innerHTML += '<p class="empty-note">Swipe more schools to see the rankings.</p>';
+    return;
+  }
+
+  prestigeList.forEach((item, i) => {
+    const label = i === 0 ? 'Most Prestigious' : null;
+    pane.appendChild(buildRankedSchoolCard(item, i + 1, label));
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PASSED SCHOOLS SECTION (balanced tab only)
+══════════════════════════════════════════════════════════════════ */
+
+function renderPassedSection(container) {
+  if (!passedItems || passedItems.length === 0) return;
+
+  const section = document.createElement('div');
+  section.className = 'passed-section';
+
+  const toggle = document.createElement('button');
+  toggle.className = 'passed-toggle';
+  toggle.textContent = `+ Schools you passed on (${passedItems.length})`;
+
+  const list = document.createElement('div');
+  list.className = 'passed-list hidden';
+
+  passedItems.forEach(item => list.appendChild(buildPassedCard(item)));
+
+  toggle.addEventListener('click', () => {
+    const hidden = list.classList.toggle('hidden');
+    toggle.textContent = hidden
+      ? `+ Schools you passed on (${passedItems.length})`
+      : `- Schools you passed on (${passedItems.length})`;
+  });
+
+  section.appendChild(toggle);
+  section.appendChild(list);
+  container.appendChild(section);
+}
+
+function buildPassedCard(item) {
+  const { school } = item;
+  const wrapper = document.createElement('div');
+
+  function renderNormal() {
+    wrapper.className = 'passed-card';
+    wrapper.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 6px">PASSED</span>
+        <span style="font-weight:600">${school.emoji} ${school.name}</span>
+        <span style="color:var(--muted);font-size:0.8rem;margin-left:auto">${school.loc}</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn-ghost btn-sm passed-add-btn">Add to My List</button>
+        <button class="btn-ghost btn-sm passed-keep-btn">Keep Passed</button>
+      </div>
+    `;
+    wrapper.querySelector('.passed-add-btn').addEventListener('click', renderConfirm);
+    wrapper.querySelector('.passed-keep-btn').addEventListener('click', () => wrapper.remove());
+  }
+
+  function renderConfirm() {
+    wrapper.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:0.65rem;font-weight:700;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 6px">PASSED</span>
+        <span style="font-weight:600">${school.emoji} ${school.name}</span>
+      </div>
+      <div style="margin-top:8px;font-size:0.85rem;color:var(--text)">Re-run scoring with ${school.name} included?</div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn-primary btn-sm confirm-yes-btn">Yes</button>
+        <button class="btn-ghost btn-sm confirm-no-btn">No</button>
+      </div>
+    `;
+    wrapper.querySelector('.confirm-yes-btn').addEventListener('click', () => {
+      const idx = passedItems.findIndex(x => x.school.id === school.id);
+      if (idx !== -1) likedItems.push(passedItems.splice(idx, 1)[0]);
+      const pool = likedItems.length > 0 ? likedItems : deck.slice(0, 8);
+      prestigeList  = buildPrestigeRanking(pool);
+      fitList       = buildFitRanking(pool);
+      balancedList  = buildBalancedRanking(pool);
+      renderBalancedTab();
+      renderFitTab();
+      renderRankingsTab();
+    });
+    wrapper.querySelector('.confirm-no-btn').addEventListener('click', renderNormal);
+  }
+
+  renderNormal();
+  return wrapper;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   REQUIREMENTS TAB
 ══════════════════════════════════════════════════════════════════ */
 
 function renderRequirementsTab() {
@@ -161,16 +343,13 @@ function renderRequirementsTab() {
 
   const note = document.createElement('div');
   note.className = 'req-note';
-  note.innerHTML = `Always verify course articulation at <a href="https://www.assist.org" target="_blank" rel="noopener">assist.org</a>. Check off courses as you complete them — your progress saves automatically.`;
+  note.innerHTML = `Always verify course articulation at <a href="https://www.assist.org" target="_blank" rel="noopener">assist.org</a>. Check off courses as you complete them - your progress saves automatically.`;
   pane.appendChild(note);
 
-  const allTiered = [
-    ...tiers.reach .map(x => ({ ...x, tier: 'reach'  })),
-    ...tiers.match .map(x => ({ ...x, tier: 'match'  })),
-    ...tiers.safety.map(x => ({ ...x, tier: 'safety' }))
-  ];
+  // Use balancedList as the canonical set of schools for requirements
+  const schools = (balancedList.length > 0 ? balancedList : fitList).map(x => x.school);
 
-  allTiered.forEach(({ school }) => {
+  schools.forEach(school => {
     const typeClass  = school.type.toLowerCase().replace(/ /g, '-');
     const schoolData = (typeof COURSE_REQUIREMENTS !== 'undefined')
       ? COURSE_REQUIREMENTS?.[school.id]?.[student.major]
@@ -179,7 +358,6 @@ function renderRequirementsTab() {
     const block = document.createElement('div');
     block.className = 'req-school-block';
 
-    // School header
     block.innerHTML = `
       <div class="req-school-name">
         <div class="school-card-stripe ${typeClass}" style="position:relative;width:4px;height:20px;border-radius:2px;flex-shrink:0"></div>
@@ -191,22 +369,19 @@ function renderRequirementsTab() {
     `;
 
     if (schoolData && schoolData.sections) {
-      // ── Checklist mode ──────────────────────────────────────────
       const allCourses = schoolData.sections.flatMap(s => s.courses);
       const total      = allCourses.length;
       let   completed  = 0;
 
-      // Counter
       const counter = document.createElement('div');
-      counter.className = 'checklist-counter';
-      counter.id        = `counter-${school.id}`;
+      counter.className   = 'checklist-counter';
+      counter.id          = `counter-${school.id}`;
       counter.textContent = `0 / ${total} courses completed`;
       block.appendChild(counter);
 
       schoolData.sections.forEach(section => {
         const sectionEl = document.createElement('div');
         sectionEl.className = 'checklist-section';
-
         const titleEl = document.createElement('div');
         titleEl.className   = 'checklist-section-title';
         titleEl.textContent = section.title;
@@ -214,13 +389,13 @@ function renderRequirementsTab() {
 
         section.courses.forEach(course => {
           const row = document.createElement('div');
-          row.className       = 'course-row';
-          row.dataset.key     = course.key;
+          row.className   = 'course-row';
+          row.dataset.key = course.key;
 
           const cb = document.createElement('input');
-          cb.type        = 'checkbox';
-          cb.id          = `cb-${course.key}`;
-          cb.className   = 'course-checkbox';
+          cb.type           = 'checkbox';
+          cb.id             = `cb-${course.key}`;
+          cb.className      = 'course-checkbox';
           cb.dataset.school = school.id;
           cb.dataset.major  = student.major;
           cb.dataset.key    = course.key;
@@ -232,18 +407,11 @@ function renderRequirementsTab() {
             <span class="course-note">${course.note}</span>
           `;
 
-          // Apply completed style
-          const applyChecked = (checked) => {
-            row.classList.toggle('course-completed', checked);
-          };
-
           cb.addEventListener('change', () => {
-            applyChecked(cb.checked);
-            // Update counter
-            const checked = block.querySelectorAll('.course-checkbox:checked').length;
+            row.classList.toggle('course-completed', cb.checked);
+            const checked   = block.querySelectorAll('.course-checkbox:checked').length;
             const counterEl = document.getElementById(`counter-${school.id}`);
             if (counterEl) counterEl.textContent = `${checked} / ${total} courses completed`;
-            // Save to Supabase (guests skip)
             saveCourseProgress(currentUserId, school.id, student.major, course.key, cb.checked);
           });
 
@@ -255,32 +423,22 @@ function renderRequirementsTab() {
         block.appendChild(sectionEl);
       });
 
-      // Restore saved progress from window.savedCourseProgress (returning users)
+      // Restore saved progress
       if (window.savedCourseProgress && window.savedCourseProgress.length > 0) {
         window.savedCourseProgress.forEach(row => {
           if (row.school_id === school.id && row.major === student.major && row.completed) {
             const cb = block.querySelector(`input[data-key="${row.course_key}"]`);
-            if (cb) {
-              cb.checked = true;
-              cb.closest('.course-row')?.classList.add('course-completed');
-              completed++;
-            }
+            if (cb) { cb.checked = true; cb.closest('.course-row')?.classList.add('course-completed'); completed++; }
           }
         });
         const counterEl = document.getElementById(`counter-${school.id}`);
-        if (counterEl && completed > 0) {
-          counterEl.textContent = `${completed} / ${total} courses completed`;
-        }
+        if (counterEl && completed > 0) counterEl.textContent = `${completed} / ${total} courses completed`;
       } else if (!currentUserId?.startsWith('guest_') && !currentUserId?.startsWith('local_')) {
-        // Live fetch for users whose progress wasn't pre-fetched
         getCourseProgress(currentUserId, school.id, student.major).then(rows => {
           rows.forEach(row => {
             if (row.completed) {
               const cb = block.querySelector(`input[data-key="${row.course_key}"]`);
-              if (cb) {
-                cb.checked = true;
-                cb.closest('.course-row')?.classList.add('course-completed');
-              }
+              if (cb) { cb.checked = true; cb.closest('.course-row')?.classList.add('course-completed'); }
             }
           });
           const checked   = block.querySelectorAll('.course-checkbox:checked').length;
@@ -290,31 +448,16 @@ function renderRequirementsTab() {
       }
 
     } else {
-      // ── Fallback: AI-generated requirements table ────────────────
-      const req = aiData?.schools?.[school.id]?.transfer_requirements || {};
-      const coursesHtml = (req.required_courses || [])
-        .map(c => `<span>${c}</span>`)
-        .join('');
-
+      // Fallback: AI-generated requirements table
+      const req        = aiData?.schools?.[school.id]?.transfer_requirements || {};
+      const coursesHtml = (req.required_courses || []).map(c => `<span>${c}</span>`).join('');
       const table = document.createElement('table');
       table.className = 'req-table';
       table.innerHTML = `
-        <tr>
-          <td>Min GPA Required</td>
-          <td>${req.gpa_required || school.minGPA.toFixed(1) + ' (competitive)'}</td>
-        </tr>
-        <tr>
-          <td>IGETC</td>
-          <td>Strongly recommended — complete at IVC before transferring</td>
-        </tr>
-        <tr>
-          <td>Required Courses</td>
-          <td><div class="req-courses">${coursesHtml || '<span>See assist.org for full articulation</span>'}</div></td>
-        </tr>
-        <tr>
-          <td>IVC Notes</td>
-          <td class="ivc-note-cell">${req.ivc_notes || (school.ivcPerks ? school.ivcPerks : 'Review IVC articulation at assist.org')}</td>
-        </tr>
+        <tr><td>Min GPA Required</td><td>${req.gpa_required || school.minGPA.toFixed(1) + ' (competitive)'}</td></tr>
+        <tr><td>IGETC</td><td>Strongly recommended - complete at IVC before transferring</td></tr>
+        <tr><td>Required Courses</td><td><div class="req-courses">${coursesHtml || '<span>See assist.org for full articulation</span>'}</div></td></tr>
+        <tr><td>IVC Notes</td><td class="ivc-note-cell">${req.ivc_notes || school.ivcPerks || 'Review IVC articulation at assist.org'}</td></tr>
       `;
       block.appendChild(table);
     }
@@ -324,7 +467,7 @@ function renderRequirementsTab() {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   YOUR PATH TAB (renamed from Life Plan)
+   YOUR PATH TAB
 ══════════════════════════════════════════════════════════════════ */
 
 async function renderYourPathTab() {
@@ -332,38 +475,24 @@ async function renderYourPathTab() {
   if (!pane) return;
   pane.innerHTML = '';
 
-  // ── Social proof: Students Like You ─────────────────────────
+  // Social proof: Students Like You
   try {
     const rows = await getRecentOutcomes(20);
     if (rows && rows.length > 0) {
-      const gpa     = parseFloat(student.gpa);
+      const gpa      = parseFloat(student.gpa);
       const matching = rows.filter(r =>
-        r.student_major === student.major &&
-        Math.abs(r.student_gpa - gpa) <= 0.3
+        r.student_major === student.major && Math.abs(r.student_gpa - gpa) <= 0.3
       );
       if (matching.length > 0) {
         const section = document.createElement('div');
         section.innerHTML = `
-          <div style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:4px">
-            Students Like You
-          </div>
-          <div style="font-size:0.82rem;color:var(--muted);margin-bottom:12px">
-            IVC students with similar profiles who got accepted:
-          </div>
+          <div style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:4px">Students Like You</div>
+          <div style="font-size:0.82rem;color:var(--muted);margin-bottom:12px">IVC students with similar profiles who got accepted:</div>
         `;
         matching.forEach(r => {
           const card = document.createElement('div');
-          card.style.cssText = `
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            padding: 10px 14px;
-            font-size: 0.85rem;
-            color: var(--text);
-            margin-bottom: 6px;
-            line-height: 1.4;
-          `;
-          card.innerHTML = `${r.student_name} (GPA ${r.student_gpa}, ${r.student_major}) → admitted to <span style="color:var(--accent3)">${r.school_name}</span> (${r.year})`;
+          card.style.cssText = `background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-size:0.85rem;color:var(--text);margin-bottom:6px;line-height:1.4;`;
+          card.innerHTML = `${r.student_name} (GPA ${r.student_gpa}, ${r.student_major}) admitted to <span style="color:var(--accent3)">${r.school_name}</span> (${r.year})`;
           section.appendChild(card);
         });
         section.style.marginBottom = '24px';
@@ -372,10 +501,8 @@ async function renderYourPathTab() {
     }
   } catch (_) {}
 
-  // ── Extracurricular recommendations ─────────────────────────
   renderExtracurricularRecommendations(pane);
 
-  // ── AI life plan content ─────────────────────────────────────
   const plan = aiData?.life_plan || {};
 
   if (plan.summary) {
@@ -389,12 +516,8 @@ async function renderYourPathTab() {
   if (timeline.length > 0) {
     const timelineEl = document.createElement('div');
     timelineEl.className = 'timeline';
-
     timeline.forEach((phase, i) => {
-      const actionsHtml = (phase.actions || [])
-        .map(a => `<li>${a}</li>`)
-        .join('');
-
+      const actionsHtml = (phase.actions || []).map(a => `<li>${a}</li>`).join('');
       const phaseEl = document.createElement('div');
       phaseEl.className = 'timeline-phase';
       phaseEl.innerHTML = `
@@ -406,7 +529,6 @@ async function renderYourPathTab() {
       `;
       timelineEl.appendChild(phaseEl);
     });
-
     pane.appendChild(timelineEl);
   }
 
@@ -425,11 +547,6 @@ async function renderYourPathTab() {
   }
 }
 
-/**
- * renderExtracurricularRecommendations()
- * Shows what the student is already doing and what they should add,
- * based on their major group and selected extracurriculars.
- */
 function renderExtracurricularRecommendations(pane) {
   const majorGroup = getMajorGroup(student.major);
   const allOptions = EXTRACURRICULAR_MAP[majorGroup] || EXTRACURRICULAR_MAP['default'];
@@ -441,18 +558,14 @@ function renderExtracurricularRecommendations(pane) {
 
   const heading = document.createElement('div');
   heading.innerHTML = `
-    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:4px">
-      Recommended Extracurriculars
-    </div>
-    <div style="font-size:0.82rem;color:var(--muted)">
-      Based on your major and target schools, these strengthen your transfer application.
-    </div>
+    <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:4px">Recommended Extracurriculars</div>
+    <div style="font-size:0.82rem;color:var(--muted)">Based on your major and target schools, these strengthen your transfer application.</div>
   `;
   section.appendChild(heading);
 
   if (existing.length > 0) {
     const doingWrap = document.createElement('div');
-    doingWrap.innerHTML = `<div class="field-label" style="margin-bottom:6px">✅ You're already doing:</div>`;
+    doingWrap.innerHTML = `<div class="field-label" style="margin-bottom:6px">You are already doing:</div>`;
     const pills = document.createElement('div');
     pills.className = 'pill-group';
     existing.forEach(e => {
@@ -468,7 +581,7 @@ function renderExtracurricularRecommendations(pane) {
 
   if (suggestions.length > 0) {
     const suggestWrap = document.createElement('div');
-    suggestWrap.innerHTML = `<div class="field-label" style="margin-bottom:6px">💡 Consider adding:</div>`;
+    suggestWrap.innerHTML = `<div class="field-label" style="margin-bottom:6px">Consider adding:</div>`;
     const pills = document.createElement('div');
     pills.className = 'pill-group';
     suggestions.forEach(e => {

@@ -25,22 +25,25 @@ const AI_MAX_TOKENS = 1000;
  * @param {Object} tiers   – { reach, match, safety } from tierSchools()
  * @returns {Promise<Object>} dashboard JSON
  */
-async function generateAIContent(student, tiers) {
+async function generateAIContent(student, schoolsList, outcomesData = []) {
   if (!OLLAMA_ENABLED) {
-    console.info('[ai.js] Ollama disabled — using fallback content.');
-    return buildFallback(student, tiers);
+    console.info('[ai.js] Ollama disabled  -  using fallback content.');
+    return buildFallback(student, schoolsList);
   }
 
-  const allSchools = [
-    ...tiers.reach .map(x => ({ ...x.school, tier: 'reach'  })),
-    ...tiers.match .map(x => ({ ...x.school, tier: 'match'  })),
-    ...tiers.safety.map(x => ({ ...x.school, tier: 'safety' }))
-  ];
+  // schoolsList is an array of {school, score, fit} items (balancedList)
+  const allSchools = (schoolsList || []).map((x, i) => ({
+    ...x.school,
+    rank:     i + 1,
+    fitScore: x.score
+  }));
 
-  if (allSchools.length === 0) return buildFallback(student, tiers);
+  if (allSchools.length === 0) return buildFallback(student, schoolsList);
 
-  const prompt   = buildPrompt(student, allSchools);
-  const endpoint = `${OLLAMA_URL}/api/generate`;
+  const prompt     = buildPrompt(student, allSchools, outcomesData);
+  const endpoint   = `${OLLAMA_URL}/api/generate`;
+  const controller = new AbortController();
+  const timeoutId  = setTimeout(() => controller.abort(), 30000);
 
   try {
     const resp = await fetch(endpoint, {
@@ -48,6 +51,7 @@ async function generateAIContent(student, tiers) {
       headers: {
         'Content-Type': 'application/json'
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model: AI_MODEL,
         prompt,
@@ -58,6 +62,7 @@ async function generateAIContent(student, tiers) {
         }
       })
     });
+    clearTimeout(timeoutId);
 
     if (!resp.ok) {
       const errText = await resp.text().catch(() => '');
@@ -75,23 +80,36 @@ async function generateAIContent(student, tiers) {
     return parsed;
 
   } catch (err) {
-    console.error('[ai.js] Ollama call failed — falling back:', err.message);
-    return buildFallback(student, tiers);
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      console.warn('[ai.js] Ollama timeout  -  falling back');
+      return buildFallback(student, schoolsList);
+    }
+    console.error('[ai.js] Ollama call failed  -  falling back:', err.message);
+    return buildFallback(student, schoolsList);
   }
 }
 
 /**
- * buildPrompt() — constructs the Ollama prompt.
+ * buildPrompt()  -  constructs the Ollama prompt.
  * Returns a string requesting a specific JSON shape.
  */
-function buildPrompt(student, schools) {
+function buildPrompt(student, schools, outcomesData = []) {
   const schoolList = schools
     .map(s => {
-      const gpaGap = (parseFloat(student.gpa || 0) - s.minGPA).toFixed(2);
+      const majorMinGpa = (s.majorMinGpa || {})[student.major]
+        ?? (s.majorMinGpa || {})['default']
+        ?? s.minGPA;
+      const gpaGap  = (parseFloat(student.gpa || 0) - majorMinGpa).toFixed(2);
+      const comp    = (s.competitiveness || {})[student.major]
+        ?? (s.competitiveness || {})['default'] ?? 3;
+      const compLabel = comp <= 2 ? 'Accessible' : comp === 3 ? 'Competitive'
+        : comp === 4 ? 'Very Competitive' : 'Highly Selective';
+      const admitPct = s.admitRate ? `${Math.round(s.admitRate * 100)}%` : 'N/A';
       return [
-        `  [${s.tier.toUpperCase()}] ${s.name} (${s.type}, ${s.loc})`,
-        `    - School min GPA: ${s.minGPA}`,
-        `    - Student GPA gap vs school min: ${gpaGap}`,
+        `  [RANK ${s.rank}] ${s.name} (${s.type}, ${s.loc})`,
+        `    - Admit rate: ${admitPct} | Major competitiveness: ${compLabel}`,
+        `    - Major min GPA: ${majorMinGpa} | Student GPA gap: ${gpaGap}`,
         `    - Tags: ${(s.tags || []).join(', ') || 'None listed'}`,
         `    - Strengths: ${(s.strengths || []).join(', ') || 'None listed'}`,
         `    - IVC context: ${s.ivcPerks || 'No special perk listed'}`
@@ -116,13 +134,77 @@ function buildPrompt(student, schools) {
     `Extra notes: ${student.extra || 'none'}.`
   ].join(' ');
 
+  const relevant = (outcomesData || []).filter(d => d.outcomes && d.outcomes.length > 0);
+  const outcomesSection = relevant.length === 0
+    ? `REAL STUDENT OUTCOMES FROM IVC DATABASE:\nNo outcome data yet for this student's profile - base advice on IVC transfer patterns and school-specific requirements.`
+    : `REAL STUDENT OUTCOMES FROM IVC DATABASE:\nThe following are real acceptance results from IVC students stored in our database. Use these to inform your advice - mention specific examples where relevant (e.g. 'An IVC student with a 3.5 GPA in CS got into UCI last year').\n\n` +
+      relevant.map(d => {
+        const rows = d.outcomes.map(o => {
+          const year = o.created_at ? new Date(o.created_at).getFullYear() : 'recently';
+          return `    - ${o.student_name}, GPA ${o.student_gpa}, ${o.student_major} - admitted ${year}`;
+        }).join('\n');
+        return `  ${d.schoolName}: ${d.outcomes.length} accepted student${d.outcomes.length !== 1 ? 's' : ''}\n${rows}`;
+      }).join('\n');
+
+  // Swipe decisions reveal genuine preference signals
+  const likedNames   = (typeof likedItems   !== 'undefined' ? likedItems   : []).map(x => x.school.name).join(', ') || 'None recorded';
+  const passedNames  = (typeof passedItems  !== 'undefined' ? passedItems  : []).map(x => x.school.name).join(', ') || 'None recorded';
+  const skippedNames = (typeof skippedItems !== 'undefined' ? skippedItems : []).map(x => x.school.name).join(', ') || 'None recorded';
+
+  const swipeSection = `STUDENT SWIPE DECISIONS:
+Liked (swiped right): ${likedNames}
+Passed (swiped left): ${passedNames}
+Skipped (neutral): ${skippedNames}
+
+The student's swipe decisions reveal genuine preference signals. Schools they liked should receive more detailed, enthusiastic advice. Schools they passed on should NOT appear in recommendations unless the student specifically added them back.`;
+
+  // Major competitiveness context
+  const avgComp = schools.length > 0
+    ? Math.round(schools.reduce((sum, s) => {
+        const c = (s.competitiveness || {})[student.major]
+          ?? (s.competitiveness || {})['default'] ?? 3;
+        return sum + c;
+      }, 0) / schools.length)
+    : 3;
+  const avgCompLabel = avgComp <= 2 ? 'Accessible' : avgComp === 3 ? 'Competitive'
+    : avgComp === 4 ? 'Very Competitive' : 'Highly Selective';
+
+  const isExceptional = parseFloat(student.gpa || 0) >= 3.9
+    && (student.extracurriculars || []).length >= 5
+    && (student.honors || '').includes('actively enrolled');
+
+  const compAdvice = avgComp >= 4
+    ? 'This is a highly competitive major. Advice should reflect realistic expectations and strong preparation emphasis.'
+    : avgComp <= 2
+    ? 'This major has accessible pathways at most target schools. Advice can be more encouraging about admission chances.'
+    : 'This major is moderately competitive. Encourage preparation while maintaining realistic expectations.';
+
+  const stanfordNote = isExceptional
+    ? '\nThis student has an exceptional profile (3.9+ GPA, 5+ extracurriculars, IVC Honors). Mention UC Berkeley\'s TAP Honors pathway and note that Stanford, while extremely selective (2.2% transfer rate), may be worth a reach application given their credentials.'
+    : '';
+
+  const communicationNote = student.major === 'Communication'
+    ? '\nNOTE: UCI does not offer a Communication major. If UCI appears in their list, suggest UCI\'s Literary Journalism or Film & Media Studies as the closest alternatives, and weight UCSB, UCSD, and UCLA higher in fit for this student.'
+    : '';
+
+  const competitivenessSection = `MAJOR COMPETITIVENESS CONTEXT:
+The student is applying for ${student.major || 'their major'}.
+Average competitiveness across their target schools: ${avgCompLabel} (${avgComp}/5).
+${compAdvice}${stanfordNote}${communicationNote}`;
+
   return `You are an expert college transfer counselor at Irvine Valley College (IVC) in Irvine, CA. Generate a highly personalized transfer plan for this specific student.
 
 STUDENT PROFILE:
 ${studentFacts}
 
-THEIR TIERED SCHOOLS:
+THEIR RANKED SCHOOLS:
 ${schoolList}
+
+${outcomesSection}
+
+${swipeSection}
+
+${competitivenessSection}
 
 OUTPUT GOALS:
 - Make the advice sound like it was written for this exact IVC student, not a generic transfer applicant.
@@ -144,7 +226,7 @@ STYLE RULES:
 - Keep each string concise but information-dense.
 - Do not repeat the same project ideas or sentence structure across schools.
 
-Return ONLY a valid JSON object with NO markdown fencing, NO explanation — just the raw JSON:
+Return ONLY a valid JSON object with NO markdown fencing, NO explanation  -  just the raw JSON:
 
 {
   "schools": {
@@ -186,12 +268,8 @@ ${schoolJsonKeys.split(',\n').map(key => {
  * @param {Object} tiers – { reach, match, safety }
  * @returns {Object} same shape as the API response
  */
-function buildFallback(student, tiers) {
-  const allSchools = [
-    ...tiers.reach .map(x => x.school),
-    ...tiers.match .map(x => x.school),
-    ...tiers.safety.map(x => x.school)
-  ];
+function buildFallback(student, schoolsList) {
+  const allSchools = (schoolsList || []).map(x => x.school);
 
   const schoolsData = {};
 
@@ -240,7 +318,7 @@ function buildFallback(student, tiers) {
           actions: [
             `Map ${student.major || 'major'} prerequisites term by term and verify every target school on assist.org before registering.`,
             `Turn ${student.career || 'your career goal'} into one concrete resume project this semester so your transfer story has proof, not just intent.`,
-            student.honors === 'Yes — actively enrolled'
+            (student.honors || '').includes('actively enrolled')
               ? 'Use IVC Honors actively: meet with counselors early and make sure any Honors-to-Honors or TAG advantage is actually on track.'
               : 'Meet with an IVC counselor to decide whether Honors, TAG, or a stronger IGETC plan would improve your transfer options.'
           ]

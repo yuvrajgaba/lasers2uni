@@ -23,7 +23,7 @@ let _client = null;
  */
 function initSupabase() {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.info('[supabase.js] Not configured — DB features disabled.');
+    console.info('[supabase.js] Not configured  -  DB features disabled.');
     return null;
   }
 
@@ -116,7 +116,7 @@ async function saveOutcome(outcome) {
 
 /**
  * subscribeToOutcomes()
- * Realtime subscription — fires callback whenever a new outcome is inserted.
+ * Realtime subscription  -  fires callback whenever a new outcome is inserted.
  * Used to show live toast notifications during the demo.
  *
  * @param {Function} callback – called with the new row object
@@ -198,7 +198,7 @@ function populateOutcomeSchoolSelect() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   AUTH — Users & Sessions
+   AUTH  -  Users & Sessions
 ═══════════════════════════════════════════════════════════════ */
 
 /**
@@ -215,7 +215,7 @@ function populateOutcomeSchoolSelect() {
 async function upsertUser(username, password) {
   const client = getClient();
   if (!client) {
-    // Offline / unconfigured — return a local pseudo-user so the app still works
+    // Offline / unconfigured  -  return a local pseudo-user so the app still works
     return { user: { id: 'local_' + Date.now(), username } };
   }
 
@@ -319,7 +319,7 @@ async function saveOnboarding(userId, studentObj) {
 /**
  * getUserOnboarding()
  * Returns the most recent onboarding row for a user, or null.
- * Alias for getLatestOnboarding — used in auth.js.
+ * Alias for getLatestOnboarding  -  used in auth.js.
  */
 async function getUserOnboarding(userId) {
   return getLatestOnboarding(userId);

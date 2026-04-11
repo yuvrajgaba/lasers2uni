@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════
-   LASER2UNI — Design System
+   LASER2UNI  -  Design System
    Dark navy theme · Satoshi · Turquoise accent
 ═══════════════════════════════════════════════════ */
 
@@ -1340,7 +1340,7 @@ a:hover { text-decoration: underline; }
 }
 
 /* ══════════════════════════════════════════════════════
-   SOCIAL PROOF — STUDENTS LIKE YOU (life plan tab)
+   SOCIAL PROOF  -  STUDENTS LIKE YOU (life plan tab)
 ══════════════════════════════════════════════════════ */
 
 .similar-students-section {
@@ -1478,12 +1478,169 @@ a:hover { text-decoration: underline; }
 }
 
 /* ══════════════════════════════════════════════════════
+   RANKED SCHOOL CARDS (new tab structure)
+══════════════════════════════════════════════════════ */
+
+.rank-num {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--muted);
+  min-width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.card-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 14px 0;
+  min-height: 4px;
+}
+
+.top-pick-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  background: rgba(255, 180, 50, 0.18);
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  border-radius: 99px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+
+.tag-elig-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  background: rgba(61, 232, 160, 0.15);
+  color: var(--accent3);
+  border: 1px solid var(--accent3);
+  border-radius: 99px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+
+.tag-close-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  background: rgba(61, 232, 160, 0.07);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+
+.card-stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 14px 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.card-stat {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 60px;
+}
+
+.card-stat-label {
+  font-size: 0.62rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 1px;
+}
+
+/* ══════════════════════════════════════════════════════
+   LIST TAB HEADERS
+══════════════════════════════════════════════════════ */
+
+.list-tab-header {
+  padding: 16px 0 12px;
+  margin-bottom: 4px;
+}
+
+.list-tab-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.list-tab-sub {
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.empty-note {
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 32px 0;
+}
+
+/* ══════════════════════════════════════════════════════
+   PASSED SCHOOLS SECTION
+══════════════════════════════════════════════════════ */
+
+.passed-section {
+  margin-top: 28px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.passed-toggle {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  letter-spacing: 0.02em;
+  transition: color var(--transition);
+}
+
+.passed-toggle:hover { color: var(--text); }
+
+.passed-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.passed-list.hidden { display: none; }
+
+.passed-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  opacity: 0.65;
+  transition: opacity var(--transition);
+}
+
+.passed-card:hover { opacity: 0.9; }
+
+/* ══════════════════════════════════════════════════════
    RESPONSIVE
 ══════════════════════════════════════════════════════ */
 @media (max-width: 420px) {
   .card-name { font-size: 1.1rem; }
   .swipe-controls { gap: 16px; }
   .ctrl-btn { width: 50px; height: 50px; font-size: 1.1rem; }
-  .tab { font-size: 0.8rem; padding: 12px 6px; }
+  .tab { font-size: 0.75rem; padding: 10px 4px; }
   .dash-header { padding: 12px 14px; }
 }

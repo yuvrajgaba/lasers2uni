@@ -20,7 +20,7 @@ function setupAuthScreen() {
   screen.innerHTML = `
     <div class="onboarding-wrap">
       <div class="ob-logo">Lasers<span>2</span>Uni</div>
-      <p class="ob-tagline">Find your transfer fit — built for IVC students.</p>
+      <p class="ob-tagline">Find your transfer fit  -  built for IVC students.</p>
 
       <div class="auth-form">
         <label class="field-label">Username</label>
@@ -126,22 +126,25 @@ async function handleAuthSubmit() {
     // Pre-fetch all course progress so the requirements tab can restore state
     window.savedCourseProgress = await getAllCourseProgress(currentUserId);
 
-    // Build deck + tiers, show loading, generate AI, then show dashboard
-    deck  = buildDeck(student);
-    tiers = tierSchools(deck.slice(0, 6), parseFloat(student.gpa));
+    // Build deck and all three rankings, then show dashboard
+    deck = buildDeck(student);
+    const pool = deck.slice(0, 8);
+    prestigeList  = buildPrestigeRanking(pool);
+    fitList       = buildFitRanking(pool);
+    balancedList  = buildBalancedRanking(pool);
 
     showScreen('screen-loading');
     startLoadingMessages();
 
-    aiData = await generateAIContent(student, tiers);
-    buildDashboard();
+    aiData = await generateAIContent(student, balancedList, []);
+    buildDashboard(prestigeList, fitList, balancedList);
     showScreen('screen-dashboard');
 
     // Inject "Edit profile" button into student chip
     const chip = document.getElementById('student-chip');
     if (chip) {
       chip.innerHTML =
-        `${student.name} · ${student.major} · ${student.gpa} GPA` +
+        `${student.name} - ${student.major} - ${student.gpa} GPA` +
         `<button class="edit-profile-btn" onclick="showScreen('screen-onboarding')">Edit</button>`;
     }
   } else {

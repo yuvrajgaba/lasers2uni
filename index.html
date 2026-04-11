@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Laser2Uni — Find Your Transfer Fit</title>
+  <title>Laser2Uni  -  Find Your Transfer Fit</title>
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -16,7 +16,7 @@
     <div class="onboarding-wrap">
 
       <div class="ob-logo">Lasers<span>2</span>Uni</div>
-      <p class="ob-tagline">Find your transfer fit — built for IVC students.</p>
+      <p class="ob-tagline">Find your transfer fit  -  built for IVC students.</p>
 
       <!-- School logos strip -->
       <div class="schools-strip">
@@ -131,7 +131,7 @@
           <button class="pill" data-val="Don't Know">Don't Know</button>
         </div>
 
-        <!-- Cal-GETC areas — shown only when "In Progress" is selected -->
+        <!-- Cal-GETC areas  -  shown only when "In Progress" is selected -->
         <div id="calgetc-areas-wrap" class="hidden">
           <label class="field-label" style="margin-top:12px">
             Which Cal-GETC areas have you completed so far?
@@ -153,10 +153,10 @@
 
         <label class="field-label">
           IVC Honors Program
-          <button class="info-badge" data-tooltip="IVC Honors gives you access to the Honors-to-Honors pathway to UCI and strengthens TAG eligibility. TAG (Transfer Admission Guarantee) lets qualifying IVC students lock in a UC admission before leaving IVC — if you meet the GPA threshold for your major.">?</button>
+          <button class="info-badge" data-tooltip="IVC Honors gives you access to the Honors-to-Honors pathway to UCI and strengthens TAG eligibility. TAG (Transfer Admission Guarantee) lets qualifying IVC students lock in a UC admission before leaving IVC  -  if you meet the GPA threshold for your major.">?</button>
         </label>
         <div class="pill-group" data-key="honors" data-multi="false">
-          <button class="pill" data-val="Yes — actively enrolled">Yes — actively enrolled</button>
+          <button class="pill" data-val="Yes  -  actively enrolled">Yes  -  actively enrolled</button>
           <button class="pill" data-val="Interested, not yet">Interested, not yet</button>
           <button class="pill" data-val="Not in honors">Not in honors</button>
         </div>
@@ -271,7 +271,7 @@
 
     <div class="swipe-controls">
       <button class="ctrl-btn pass-btn" id="btn-pass" title="Pass">✕</button>
-      <button class="ctrl-btn skip-btn" id="btn-skip" title="Skip">—</button>
+      <button class="ctrl-btn skip-btn" id="btn-skip" title="Skip"> - </button>
       <button class="ctrl-btn like-btn" id="btn-like" title="Like">♥</button>
     </div>
 
@@ -301,19 +301,27 @@
     </header>
 
     <div class="tab-bar" id="tab-bar">
-      <button class="tab active" data-tab="schools">Schools</button>
+      <button class="tab active" data-tab="balanced">Balanced ✨</button>
+      <button class="tab" data-tab="fit">Best For You</button>
+      <button class="tab" data-tab="rankings">Rankings</button>
       <button class="tab" data-tab="requirements">Requirements</button>
       <button class="tab" data-tab="your-path">Your Path</button>
     </div>
 
-    <div class="tab-pane active" id="tab-schools">
-      <!-- Injected by ui.js -->
+    <div class="tab-pane active" id="tab-balanced">
+      <!-- Injected by dashboard.js -->
+    </div>
+    <div class="tab-pane hidden" id="tab-fit">
+      <!-- Injected by dashboard.js -->
+    </div>
+    <div class="tab-pane hidden" id="tab-rankings">
+      <!-- Injected by dashboard.js -->
     </div>
     <div class="tab-pane hidden" id="tab-requirements">
-      <!-- Injected by ui.js -->
+      <!-- Injected by dashboard.js -->
     </div>
     <div class="tab-pane hidden" id="tab-your-path">
-      <!-- Injected by ui.js -->
+      <!-- Injected by dashboard.js -->
     </div>
 
   </div>

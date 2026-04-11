@@ -3,21 +3,12 @@
  * Source-of-truth school data for Laser2Uni.
  * Owner: data person
  *
- * Fields:
- *   id        – unique slug, used as key in AI response and Supabase
- *   name      – full official name
- *   short     – abbreviation for compact UI
- *   loc       – "City, ST"
- *   type      – "UC" | "CSU" | "Private" | "OOS"
- *   emoji     – decorative card emoji (fallback when logo is unavailable)
- *   logo      – URL to school athletics logo (ESPN CDN); null for non-D1 schools
- *   size      – "Large" | "Medium" | "Small"
- *   minGPA    – minimum GPA for competitive consideration
- *   tagline   – one-line card hook
- *   tags      – array of feature strings used in scoring
- *   regions   – array matching student region pill values
- *   strengths – array matching industry pill values
- *   ivcPerks  – (optional) IVC-specific pathway note shown on swipe card
+ * New fields (2025 update):
+ *   admitRate       - overall transfer admit rate as decimal
+ *   tagGpa          - TAG GPA requirement, or null if no TAG
+ *   tagExclusions   - array of major strings excluded from TAG
+ *   majorMinGpa     - object mapping major names to their minimum GPA
+ *   competitiveness - integer 1-5 per major group (1=Accessible, 5=Highly Selective)
  */
 
 const SCHOOLS = [
@@ -32,11 +23,68 @@ const SCHOOLS = [
     size: 'Large',
     minGPA: 3.4,
     selectivity: 4,
+    admitRate: 0.395,
+    tagGpa: 3.4,
+    tagExclusions: [
+      'Business Administration',
+      'Nursing',
+      'Nursing / Pre-Nursing',
+      'Computer Science',
+      'Software Engineering',
+      'Informatics',
+      'Computer Engineering'
+    ],
+    majorMinGpa: {
+      'Business Administration': 3.0,
+      'Nursing': 3.0,
+      'Nursing / Pre-Nursing': 3.0,
+      'Computer Science': 3.0,
+      'Computer Engineering': 3.0,
+      'Mechanical Engineering': 3.0,
+      'Psychology': 3.0,
+      'Biology': 3.0,
+      'Education': 3.0,
+      'Economics': 2.8,
+      'Communication': 2.7,
+      'default': 2.4
+    },
+    competitiveness: {
+      'Computer Science': 5,
+      'Nursing': 5,
+      'Nursing / Pre-Nursing': 5,
+      'Business Administration': 5,
+      'Computer Engineering': 4,
+      'Mechanical Engineering': 4,
+      'Biology': 4,
+      'default': 3
+    },
     tagline: 'Top STEM + business',
-    tags: ['TAG Eligible', 'IVC Honors→UCI', 'Research'],
+    tags: ['TAG Eligible', 'IVC Honors to UCI', 'Research'],
     regions: ['SoCal'],
     strengths: ['Tech / Software', 'Engineering / Hardware', 'Research / Academia', 'Healthcare / Medicine', 'Education', 'History'],
     ivcPerks: 'IVC has a direct Honors-to-Honors articulation with UCI. TAG guarantees admission if you meet the GPA threshold for your major. Being 10 minutes away means a strong transfer community.'
+  },
+  {
+    id: 'ucb',
+    name: 'UC Berkeley',
+    short: 'UCB',
+    loc: 'Berkeley, CA',
+    type: 'UC',
+    emoji: '🐻',
+    logo: null,
+    size: 'Large',
+    minGPA: 3.7,
+    selectivity: 5,
+    admitRate: 0.24,
+    tagGpa: null,
+    tagExclusions: [],
+    majorMinGpa: { 'default': 3.5 },
+    competitiveness: { 'default': 5 },
+    tagline: 'Top public university in the world',
+    tags: ['Highly Selective', 'Research', 'Top Ranked', 'Prestigious', 'TAP Honors'],
+    regions: ['NorCal / Bay Area'],
+    strengths: ['Tech / Software', 'Engineering / Hardware', 'Research / Academia', 'Business / Finance', 'Government / Policy', 'Healthcare / Medicine'],
+    ivcPerks: 'TAP Honors to Honors available: 3.5 GPA UC-transferable, 3.25 in honors coursework. No TAG but TAP gives IVC Honors students a real pathway.'
   },
   {
     id: 'ucla',
@@ -49,6 +97,20 @@ const SCHOOLS = [
     size: 'Large',
     minGPA: 3.7,
     selectivity: 5,
+    admitRate: 0.227,
+    tagGpa: null,
+    tagExclusions: [],
+    majorMinGpa: { 'default': 3.5 },
+    competitiveness: {
+      'Computer Science': 5,
+      'Nursing': 5,
+      'Nursing / Pre-Nursing': 5,
+      'Business Administration': 5,
+      'Engineering': 5,
+      'Mechanical Engineering': 5,
+      'Electrical Engineering': 5,
+      'default': 5
+    },
     tagline: 'Prestige + massive network',
     tags: ['Highly Selective', 'Research', 'Top Ranked'],
     regions: ['SoCal'],
@@ -65,11 +127,23 @@ const SCHOOLS = [
     size: 'Large',
     minGPA: 3.5,
     selectivity: 4,
+    admitRate: 0.527,
+    tagGpa: null,
+    tagExclusions: [],
+    majorMinGpa: { 'default': 3.0 },
+    competitiveness: {
+      'Computer Science': 5,
+      'Electrical Engineering': 4,
+      'Mechanical Engineering': 4,
+      'Biology': 4,
+      'Pre-Med / Biology': 4,
+      'default': 3
+    },
     tagline: 'Top biotech + CS',
-    tags: ['TAG Eligible', 'Biotech', 'Research-Heavy'],
+    tags: ['Biotech', 'Research-Heavy', 'Strong Transfer Pipeline'],
     regions: ['SoCal'],
     strengths: ['Engineering / Hardware', 'Healthcare / Medicine', 'Research / Academia', 'Tech / Software', 'History'],
-    ivcPerks: 'TAG eligible for most majors. Strong SoCal CC pipeline. World-class biotech and engineering programs.'
+    ivcPerks: 'Strong SoCal CC transfer pipeline with a 52.7% overall admit rate. World-class biotech, engineering, and CS programs.'
   },
   {
     id: 'ucsb',
@@ -82,6 +156,18 @@ const SCHOOLS = [
     size: 'Large',
     minGPA: 3.4,
     selectivity: 3,
+    admitRate: 0.589,
+    tagGpa: 3.4,
+    tagExclusions: ['Computer Science'],
+    majorMinGpa: {
+      'Computer Science': 3.3,
+      'Psychology': 3.3,
+      'default': 2.8
+    },
+    competitiveness: {
+      'Computer Science': 5,
+      'default': 3
+    },
     tagline: 'Research + beautiful campus',
     tags: ['TAG Eligible', 'Research', 'Social Scene'],
     regions: ['SoCal', 'NorCal / Bay Area'],
@@ -99,6 +185,24 @@ const SCHOOLS = [
     size: 'Large',
     minGPA: 3.2,
     selectivity: 3,
+    admitRate: 0.57,
+    tagGpa: 3.2,
+    tagExclusions: ['Computer Science', 'Data Science'],
+    majorMinGpa: {
+      'Mechanical Engineering': 3.5,
+      'Electrical Engineering': 3.5,
+      'Civil Engineering': 3.5,
+      'Aerospace Engineering': 3.5,
+      'Chemical Engineering': 3.5,
+      'Biomedical Engineering': 3.5,
+      'default': 3.0
+    },
+    competitiveness: {
+      'Computer Science': 4,
+      'Mechanical Engineering': 4,
+      'Electrical Engineering': 4,
+      'default': 3
+    },
     tagline: 'Strong STEM + pre-med',
     tags: ['TAG Eligible', 'Pre-Med', 'Collaborative'],
     regions: ['NorCal / Bay Area'],
@@ -116,6 +220,11 @@ const SCHOOLS = [
     size: 'Medium',
     minGPA: 3.0,
     selectivity: 3,
+    admitRate: 0.61,
+    tagGpa: 3.0,
+    tagExclusions: [],
+    majorMinGpa: { 'default': 3.0 },
+    competitiveness: { 'default': 2 },
     tagline: 'CS powerhouse, tech ties',
     tags: ['TAG Eligible', 'CS-Strong', 'Nature Campus'],
     regions: ['NorCal / Bay Area'],
@@ -133,11 +242,16 @@ const SCHOOLS = [
     size: 'Medium',
     minGPA: 2.8,
     selectivity: 2,
+    admitRate: 0.682,
+    tagGpa: 3.0,
+    tagExclusions: [],
+    majorMinGpa: { 'default': 2.8 },
+    competitiveness: { 'default': 2 },
     tagline: 'Accessible UC, growing fast',
     tags: ['TAG Eligible', 'Pre-Med Friendly', 'Accessible'],
     regions: ['SoCal'],
     strengths: ['Healthcare / Medicine', 'Research / Academia', 'Engineering / Hardware', 'Education', 'History'],
-    ivcPerks: 'One of the most transfer-friendly UCs. Very high TAG acceptance rate. Close to IVC — strong local community.'
+    ivcPerks: 'One of the most transfer-friendly UCs. Very high TAG acceptance rate. Close to IVC - strong local community.'
   },
   {
     id: 'ucm',
@@ -150,6 +264,15 @@ const SCHOOLS = [
     size: 'Small',
     minGPA: 2.4,
     selectivity: 1,
+    admitRate: 0.721,
+    tagGpa: 3.0,
+    tagExclusions: [],
+    majorMinGpa: {
+      'Biology': 2.9,
+      'Pre-Med / Biology': 2.9,
+      'default': 2.4
+    },
+    competitiveness: { 'default': 1 },
     tagline: 'Newest UC, small classes',
     tags: ['TAG Eligible', 'Scholarships', 'Small Classes'],
     regions: ['NorCal / Bay Area'],
@@ -167,6 +290,11 @@ const SCHOOLS = [
     size: 'Large',
     minGPA: 2.5,
     selectivity: 1,
+    admitRate: 0.55,
+    tagGpa: null,
+    tagExclusions: [],
+    majorMinGpa: { 'default': 2.5 },
+    competitiveness: { 'default': 2 },
     tagline: 'Top business + film in OC',
     tags: ['Transfer-Friendly', 'Business', 'Film/Media'],
     regions: ['SoCal'],
@@ -183,6 +311,11 @@ const SCHOOLS = [
     size: 'Large',
     minGPA: 2.7,
     selectivity: 2,
+    admitRate: 0.56,
+    tagGpa: null,
+    tagExclusions: [],
+    majorMinGpa: { 'default': 2.7 },
+    competitiveness: { 'default': 2 },
     tagline: 'Strong engineering + nursing',
     tags: ['Transfer-Friendly', 'Engineering', 'Diverse'],
     regions: ['SoCal'],
@@ -199,7 +332,17 @@ const SCHOOLS = [
     size: 'Medium',
     minGPA: 3.3,
     selectivity: 3,
-    tagline: '"Learn by doing" — hands-on',
+    admitRate: 0.78,
+    tagGpa: null,
+    tagExclusions: [],
+    majorMinGpa: { 'default': 3.3 },
+    competitiveness: {
+      'Computer Science': 4,
+      'Mechanical Engineering': 4,
+      'Electrical Engineering': 4,
+      'default': 3
+    },
+    tagline: '"Learn by doing" - hands-on engineering',
     tags: ['Hands-On', 'Competitive CSU', 'Engineering'],
     regions: ['SoCal', 'NorCal / Bay Area'],
     strengths: ['Engineering / Hardware', 'Tech / Software', 'Startups / Entrepreneurship']
@@ -215,6 +358,11 @@ const SCHOOLS = [
     size: 'Large',
     minGPA: 3.0,
     selectivity: 2,
+    admitRate: 0.55,
+    tagGpa: null,
+    tagExclusions: [],
+    majorMinGpa: { 'default': 3.0 },
+    competitiveness: { 'default': 2 },
     tagline: 'Strong business + campus life',
     tags: ['Transfer-Friendly', 'Business', 'Active Campus', 'Social Scene'],
     regions: ['SoCal'],
@@ -231,6 +379,11 @@ const SCHOOLS = [
     size: 'Large',
     minGPA: 2.6,
     selectivity: 1,
+    admitRate: 0.71,
+    tagGpa: null,
+    tagExclusions: [],
+    majorMinGpa: { 'default': 2.6 },
+    competitiveness: { 'default': 2 },
     tagline: 'Practical, industry-ready',
     tags: ['Transfer-Friendly', 'Engineering', 'Hands-On'],
     regions: ['SoCal'],
@@ -247,6 +400,16 @@ const SCHOOLS = [
     size: 'Large',
     minGPA: 3.0,
     selectivity: 2,
+    admitRate: 0.60,
+    tagGpa: null,
+    tagExclusions: [],
+    majorMinGpa: { 'default': 3.0 },
+    competitiveness: {
+      'Computer Science': 4,
+      'Mechanical Engineering': 3,
+      'Electrical Engineering': 3,
+      'default': 2
+    },
     tagline: 'Silicon Valley campus',
     tags: ['Transfer-Friendly', 'Tech', 'Silicon Valley'],
     regions: ['NorCal / Bay Area'],
@@ -263,6 +426,11 @@ const SCHOOLS = [
     size: 'Large',
     minGPA: 3.8,
     selectivity: 5,
+    admitRate: 0.271,
+    tagGpa: null,
+    tagExclusions: [],
+    majorMinGpa: { 'default': 3.44 },
+    competitiveness: { 'default': 5 },
     tagline: 'Elite private, huge network',
     tags: ['Prestigious', 'Trojan Network', 'Selective'],
     regions: ['SoCal'],
@@ -279,6 +447,11 @@ const SCHOOLS = [
     size: 'Medium',
     minGPA: 3.2,
     selectivity: 3,
+    admitRate: 0.60,
+    tagGpa: null,
+    tagExclusions: [],
+    majorMinGpa: { 'default': 3.2 },
+    competitiveness: { 'default': 3 },
     tagline: 'Strong transfer + film + biz',
     tags: ['Transfer-Friendly', 'Private', 'Film/Business'],
     regions: ['SoCal'],
@@ -295,57 +468,36 @@ const SCHOOLS = [
     size: 'Small',
     minGPA: 3.5,
     selectivity: 3,
+    admitRate: 0.45,
+    tagGpa: null,
+    tagExclusions: [],
+    majorMinGpa: { 'default': 3.5 },
+    competitiveness: { 'default': 3 },
     tagline: 'Liberal arts, small & elite',
     tags: ['Small Classes', 'Liberal Arts', 'Private'],
     regions: ['SoCal'],
     strengths: ['Research / Academia', 'Government / Policy', 'Creative / Media']
   },
   {
-    id: 'asu',
-    name: 'Arizona State',
-    short: 'ASU',
-    loc: 'Tempe, AZ',
-    type: 'OOS',
-    emoji: '🌵',
-    logo: 'https://a.espncdn.com/i/teamlogos/ncaa/500/9.png',
-    size: 'Large',
-    minGPA: 3.0,
-    selectivity: 2,
-    tagline: 'Massive research + merit aid',
-    tags: ['Merit Scholarships', 'Large Campus', 'Out-of-State'],
-    regions: ['Out of State'],
-    strengths: ['Tech / Software', 'Engineering / Hardware', 'Business / Finance', 'Startups / Entrepreneurship']
-  },
-  {
-    id: 'uw',
-    name: 'Univ. of Washington',
-    short: 'UW',
-    loc: 'Seattle, WA',
-    type: 'OOS',
-    emoji: '🌧',
-    logo: 'https://a.espncdn.com/i/teamlogos/ncaa/500/264.png',
-    size: 'Large',
-    minGPA: 3.5,
-    selectivity: 4,
-    tagline: 'Top CS + engineering in PNW',
-    tags: ['Research', 'CS-Strong', 'Out-of-State'],
-    regions: ['Out of State'],
-    strengths: ['Tech / Software', 'Engineering / Hardware', 'Research / Academia']
-  },
-  {
-    id: 'uoregon',
-    name: 'Univ. of Oregon',
-    short: 'U of O',
-    loc: 'Eugene, OR',
-    type: 'OOS',
-    emoji: '🦆',
-    logo: 'https://a.espncdn.com/i/teamlogos/ncaa/500/2483.png',
-    size: 'Large',
-    minGPA: 3.0,
-    selectivity: 2,
-    tagline: 'Strong journalism + business',
-    tags: ['Transfer-Friendly', 'Out-of-State', 'Creative'],
-    regions: ['Out of State'],
-    strengths: ['Business / Finance', 'Creative / Media', 'Government / Policy']
+    id: 'chapman',
+    name: 'Chapman University',
+    short: 'Chapman',
+    loc: 'Orange, CA',
+    type: 'Private',
+    emoji: '🏛️',
+    logo: null,
+    size: 'Medium',
+    minGPA: 3.2,
+    selectivity: 3,
+    admitRate: 0.60,
+    tagGpa: null,
+    tagExclusions: [],
+    majorMinGpa: { 'default': 3.0 },
+    competitiveness: { 'default': 3 },
+    tagline: 'Strong film, business & pre-law',
+    tags: ['Transfer-Friendly', 'Private', 'Film/Business'],
+    regions: ['SoCal'],
+    strengths: ['Business / Finance', 'Creative / Media', 'Government / Policy', 'Healthcare / Medicine'],
+    ivcPerks: 'Located in Orange, CA - 15 minutes from IVC. Strong transfer acceptance and merit aid for CC students.'
   }
 ];

@@ -25,7 +25,7 @@ const LOADING_MESSAGES = [
   'Tiering schools by reach, match, and safety…',
   'Pulling transfer requirements and IVC pathways…',
   'Drafting your personalized life plan…',
-  'Almost ready — putting it all together…'
+  'Almost ready  -  putting it all together…'
 ];
 
 let loadingInterval = null;
@@ -371,20 +371,37 @@ function startLoadingMessages() {
 async function finishSwiping() {
   showScreen('screen-loading');
 
-  let pool = likedItems.length > 0 ? likedItems : deck.slice(0, 6);
-  tiers = tierSchools(pool, student.gpa);
-
-  const total = tiers.reach.length + tiers.match.length + tiers.safety.length;
-  if (total === 0) {
-    tiers = tierSchools(deck.slice(0, 6), student.gpa);
-  }
+  let pool = likedItems.length > 0 ? likedItems : deck.slice(0, 8);
 
   startLoadingMessages();
 
-  aiData = await generateAIContent(student, tiers);
+  // Fetch outcomes for top schools in the pool
+  const outcomesData = await Promise.all(
+    pool.slice(0, 8).map(async item => ({
+      schoolId:   item.school.id,
+      schoolName: item.school.name,
+      outcomes:   await getSimilarStudentOutcomes(student.gpa, item.school.id)
+    }))
+  ).catch(() => []);
+
+  // Build outcomesMap and re-score pool with real data
+  const outcomesMap = {};
+  outcomesData.forEach(d => { outcomesMap[d.schoolId] = d.outcomes; });
+  pool = pool.map(item => ({
+    ...item,
+    score: score(item.school, student, outcomesMap),
+    fit:   fitLabel(score(item.school, student, outcomesMap))
+  }));
+
+  // Build all three ranking views
+  prestigeList  = buildPrestigeRanking(pool);
+  fitList       = buildFitRanking(pool);
+  balancedList  = buildBalancedRanking(pool);
+
+  aiData = await generateAIContent(student, balancedList, outcomesData);
 
   await delay(600);
 
-  buildDashboard();
+  buildDashboard(prestigeList, fitList, balancedList);
   showScreen('screen-dashboard');
 }

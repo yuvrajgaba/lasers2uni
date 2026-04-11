@@ -27,8 +27,13 @@ let skippedItems = [];
 /** Total swipes taken */
 let swipeCount = 0;
 
-/** Tiered schools after swiping */
-let tiers = { reach: [], match: [], safety: [] };
+/** Active ranking view */
+let activeView = 'balanced'; // 'balanced' | 'fit' | 'rankings'
+
+/** Three ranked school lists built after swiping */
+let prestigeList = [];
+let fitList      = [];
+let balancedList = [];
 
 /** AI-generated dashboard data */
 let aiData = {};
