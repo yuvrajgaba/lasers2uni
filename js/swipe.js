@@ -314,7 +314,11 @@ function buildCardElement(item, posClass) {
     <div class="stamp pass-stamp">PASS</div>
     <div class="stamp skip-stamp">SKIP</div>
     <div class="card-body">
-      <div class="card-emoji">${school.emoji}</div>
+      <div class="card-emoji">
+        ${school.logo
+          ? `<img src="${school.logo}" alt="${school.name}" class="school-logo-img" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none">${school.emoji}</span>`
+          : school.emoji}
+      </div>
       <div class="card-name">${school.name}</div>
       <div class="card-loc">${school.loc} · ${school.type}</div>
       <div class="card-tagline">${school.tagline}</div>

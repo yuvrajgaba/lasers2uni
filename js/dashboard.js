@@ -89,7 +89,11 @@ function buildDashboardSchoolCard(item, admitClass) {
   card.innerHTML = `
     <div class="school-card-header">
       <div class="school-card-stripe ${typeClass}"></div>
-      <div style="font-size:1.5rem;flex-shrink:0">${school.emoji}</div>
+      <div style="flex-shrink:0;width:40px;height:40px;display:flex;align-items:center;justify-content:center">
+        ${school.logo
+          ? `<img src="${school.logo}" alt="${school.name}" style="width:40px;height:40px;object-fit:contain" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none;font-size:1.5rem">${school.emoji}</span>`
+          : `<span style="font-size:1.5rem">${school.emoji}</span>`}
+      </div>
       <div class="school-card-info">
         <div class="school-card-name">${school.name}</div>
         <div class="school-card-loc">${school.loc} · Min GPA ${school.minGPA.toFixed(1)}</div>
@@ -179,7 +183,9 @@ function renderRequirementsTab() {
     block.innerHTML = `
       <div class="req-school-name">
         <div class="school-card-stripe ${typeClass}" style="position:relative;width:4px;height:20px;border-radius:2px;flex-shrink:0"></div>
-        ${school.emoji} ${school.name}
+        ${school.logo
+          ? `<img src="${school.logo}" alt="${school.name}" style="width:22px;height:22px;object-fit:contain;vertical-align:middle" onerror="this.style.display='none'">`
+          : school.emoji} ${school.name}
         <span style="font-size:0.75rem;color:var(--muted);font-weight:400;margin-left:auto">${school.loc}</span>
       </div>
     `;
