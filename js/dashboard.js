@@ -1,11 +1,12 @@
 /**
  * dashboard.js
  * Dashboard rendering for Laser2Uni.
- * Owner: UI person
  *
- * Tabs: Balanced (default) | Best For You | Rankings | Requirements | Your Path
+ * Tabs: Balanced ✨ (default) | Best For You | Rankings |
+ *       Your Competitor ⚔ | Community ◎ | Requirements ☑
  *
- * Depends on: state.js, scoring.js, supabase.js, courses.js
+ * Depends on: state.js, scoring.js, supabase.js, match.js, community.js,
+ *             competitor.js, update-profile.js
  */
 
 /* ══════════════════════════════════════════════════════════════════
@@ -26,8 +27,12 @@ function buildDashboard(prestigeListArg, fitListArg, balancedListArg) {
   renderFitTab();
   renderRankingsTab();
   renderRequirementsTab();
-  renderYourPathTab();
   addOutcomesFAB();
+
+  // Auto-trigger "You Matched!" animation for the top balanced pick
+  if (balancedList.length > 0 && typeof showMatchAnimation === 'function') {
+    setTimeout(() => showMatchAnimation(balancedList[0]), 1500);
+  }
 }
 
 /* ── Tab switching ────────────────────────────────────────────── */
@@ -38,10 +43,66 @@ function setupDashboardTabs() {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
       tab.classList.add('active');
-      const pane = document.getElementById(`tab-${tab.dataset.tab}`);
+      const paneId = `tab-${tab.dataset.tab}`;
+      const pane = document.getElementById(paneId);
       if (pane) pane.classList.remove('hidden');
+
+      // Lazy-render for the two dynamic tabs
+      if (tab.dataset.tab === 'community' && typeof renderCommunityTab === 'function') {
+        renderCommunityTab(pane);
+      } else if (tab.dataset.tab === 'competitor' && typeof renderCompetitorTab === 'function') {
+        renderCompetitorTab(pane);
+      }
     });
   });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   WHY-MATCH PILLS  (quick reasons this school matched)
+══════════════════════════════════════════════════════════════════ */
+function buildWhyMatchPills(school, isTagEligible) {
+  const pills = [];
+  const studentRegions    = student.regions    || [];
+  const studentIndustries = student.industries || [];
+  const studentSize       = student.size       || '';
+
+  // Region match — infer from loc string
+  const loc = (school.loc || '').toLowerCase();
+  const isNorCal = /berkeley|san\s?jose|santa\s?cruz|davis|merced/i.test(loc);
+  const isSoCal  = /irvine|los\s?angeles|san\s?diego|santa\s?barbara|riverside|long\s?beach|fullerton|pomona|san\s?luis\s?obispo|orange/i.test(loc);
+  if (studentRegions.includes('No Preference')) {
+    // noop — implicit match
+  } else if (isNorCal && studentRegions.includes('NorCal / Bay Area')) {
+    pills.push(`<span class="why-match-pill">✓ NorCal region</span>`);
+  } else if (isSoCal && studentRegions.includes('SoCal')) {
+    pills.push(`<span class="why-match-pill">✓ SoCal region</span>`);
+  }
+
+  // Industry hint from tags
+  const tagStr = (school.tags || []).join(' ').toLowerCase();
+  if (studentIndustries.includes('Tech / Software') && /cs|tech|silicon|engineering/.test(tagStr)) {
+    pills.push(`<span class="why-match-pill">✓ Tech industry</span>`);
+  } else if (studentIndustries.includes('Healthcare / Medicine') && /pre-?med|biotech|bio|health/.test(tagStr)) {
+    pills.push(`<span class="why-match-pill">✓ Healthcare path</span>`);
+  } else if (studentIndustries.includes('Research / Academia') && /research/.test(tagStr)) {
+    pills.push(`<span class="why-match-pill">✓ Research-heavy</span>`);
+  } else if (studentIndustries.includes('Business / Finance') && /business/.test(tagStr)) {
+    pills.push(`<span class="why-match-pill">✓ Business focus</span>`);
+  } else if (studentIndustries.includes('Creative / Media') && /film|media|creative/.test(tagStr)) {
+    pills.push(`<span class="why-match-pill">✓ Film / Media</span>`);
+  }
+
+  // TAG eligibility
+  if (isTagEligible) {
+    pills.push(`<span class="why-match-pill">✓ TAG eligible</span>`);
+  }
+
+  // Size match
+  if (studentSize && school.size && (studentSize === school.size || studentSize === 'No preference')) {
+    pills.push(`<span class="why-match-pill">✓ ${school.size} campus</span>`);
+  }
+
+  return pills;
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -86,6 +147,9 @@ function buildRankedSchoolCard(item, rank, topLabel) {
   const card = document.createElement('div');
   card.className = 'school-card';
 
+  // Why-match reasons (quick pills explaining why this school fits)
+  const whyPills = buildWhyMatchPills(school, isTagEligible);
+
   card.innerHTML = `
     <div class="school-card-header">
       <div class="school-card-stripe ${typeClass}"></div>
@@ -105,6 +169,7 @@ function buildRankedSchoolCard(item, rank, topLabel) {
       ${isTagEligible ? `<span class="tag-elig-badge">TAG Eligible</span>` : ''}
       ${isTagClose    ? `<span class="tag-close-badge">TAG: Close</span>` : ''}
     </div>
+    ${whyPills.length ? `<div class="why-match-row">${whyPills.join('')}</div>` : ''}
     <div class="card-stat-row">
       <span class="card-stat">
         <span class="card-stat-label">Admit Rate</span>${admitPct}
@@ -118,6 +183,9 @@ function buildRankedSchoolCard(item, rank, topLabel) {
       <span class="card-stat" style="color:${fit.colorVar}">
         <span class="card-stat-label">Fit Score</span>${s}
       </span>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin:10px 0 4px">
+      <button class="btn-school-chat" data-school-id="${school.id}">💬 Chat with ${school.name}</button>
     </div>
     <div class="school-card-body">
       ${schoolAI.admission_tips ? `
@@ -136,6 +204,14 @@ function buildRankedSchoolCard(item, rank, topLabel) {
       ` : ''}
     </div>
   `;
+
+  // Wire up "Chat with school" button
+  const chatBtn = card.querySelector('.btn-school-chat');
+  if (chatBtn) {
+    chatBtn.addEventListener('click', () => {
+      if (typeof openSchoolChat === 'function') openSchoolChat(item);
+    });
+  }
 
   // Async social proof badge (non-blocking)
   getSimilarStudentOutcomes(studentGpa, school.id).then(outcomes => {
@@ -167,11 +243,25 @@ function renderBalancedTab() {
 
   const header = document.createElement('div');
   header.className = 'list-tab-header';
+  const topSchool = (balancedList && balancedList.length > 0) ? balancedList[0] : null;
+  const topSchoolName = topSchool ? topSchool.school.name : '';
   header.innerHTML = `
-    <h3 class="list-tab-title">Our Recommendation</h3>
+    <h3 class="list-tab-title">✨ Our Recommendation</h3>
     <p class="list-tab-sub">A blend of prestige and personal fit - the honest list we'd give a friend.</p>
+    ${topSchool ? `
+      <button class="btn-school-chat btn-school-chat-hero" id="btn-balanced-hero-chat">
+        💬 Chat with ${topSchoolName}
+      </button>
+    ` : ''}
   `;
   pane.appendChild(header);
+
+  if (topSchool) {
+    const btn = header.querySelector('#btn-balanced-hero-chat');
+    if (btn) btn.addEventListener('click', () => {
+      if (typeof openSchoolChat === 'function') openSchoolChat(topSchool);
+    });
+  }
 
   if (!balancedList || balancedList.length === 0) {
     pane.innerHTML += '<p class="empty-note">Swipe more schools to get recommendations.</p>';
@@ -184,6 +274,107 @@ function renderBalancedTab() {
   });
 
   renderPassedSection(pane);
+
+  // Life-plan content (moved from the old "Your Path" tab)
+  renderLifePlanSection(pane);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   LIFE PLAN SECTION — embedded inside the Balanced tab
+══════════════════════════════════════════════════════════════════ */
+async function renderLifePlanSection(pane) {
+  const wrap = document.createElement('div');
+  wrap.className = 'life-plan-section';
+  wrap.style.cssText = 'margin-top:28px;padding-top:24px;border-top:1px solid var(--border)';
+
+  const h = document.createElement('h3');
+  h.textContent = '→ Your Path Forward';
+  h.style.cssText = 'margin:0 0 6px;font-size:1.15rem;color:var(--text)';
+  wrap.appendChild(h);
+
+  // "Students Like You" social proof
+  try {
+    if (typeof getRecentOutcomes === 'function') {
+      const rows = await getRecentOutcomes(20);
+      if (rows && rows.length > 0) {
+        const gpa      = parseFloat(student.gpa);
+        const matching = rows.filter(r =>
+          r.student_major === student.major && Math.abs(r.student_gpa - gpa) <= 0.3
+        );
+        if (matching.length > 0) {
+          const section = document.createElement('div');
+          section.style.marginTop = '18px';
+          section.innerHTML = `
+            <div style="font-weight:700;font-size:0.95rem;color:var(--text);margin-bottom:4px">Students Like You</div>
+            <div style="font-size:0.82rem;color:var(--muted);margin-bottom:12px">IVC students with similar profiles who got accepted:</div>
+          `;
+          matching.slice(0, 6).forEach(r => {
+            const card = document.createElement('div');
+            card.style.cssText = `background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-size:0.85rem;color:var(--text);margin-bottom:6px;line-height:1.4;`;
+            card.innerHTML = `${escapeHtmlD(r.student_name)} (GPA ${r.student_gpa}, ${escapeHtmlD(r.student_major)}) admitted to <span style="color:var(--accent3)">${escapeHtmlD(r.school_name)}</span> (${r.year})`;
+            section.appendChild(card);
+          });
+          wrap.appendChild(section);
+        }
+      }
+    }
+  } catch (_) {}
+
+  // Extracurricular recommendations
+  renderExtracurricularRecommendations(wrap);
+
+  const plan = aiData?.life_plan || {};
+
+  if (plan.summary) {
+    const summaryEl = document.createElement('div');
+    summaryEl.className   = 'life-summary';
+    summaryEl.textContent = plan.summary;
+    wrap.appendChild(summaryEl);
+  }
+
+  const timeline = plan.timeline || [];
+  if (timeline.length > 0) {
+    const timelineEl = document.createElement('div');
+    timelineEl.className = 'timeline';
+    timeline.forEach((phase, i) => {
+      const actionsHtml = (phase.actions || []).map(a => `<li>${escapeHtmlD(a)}</li>`).join('');
+      const phaseEl = document.createElement('div');
+      phaseEl.className = 'timeline-phase';
+      phaseEl.innerHTML = `
+        <div class="timeline-dot dot-${i}"></div>
+        <div class="timeline-content">
+          <div class="timeline-phase-name">${escapeHtmlD(phase.phase)}</div>
+          <ul class="timeline-actions">${actionsHtml}</ul>
+        </div>
+      `;
+      timelineEl.appendChild(phaseEl);
+    });
+    wrap.appendChild(timelineEl);
+  }
+
+  if (plan.job_strategy) {
+    const jobEl = document.createElement('div');
+    jobEl.className = 'life-strategy-block';
+    jobEl.innerHTML = `<h4>Job Strategy</h4><p>${escapeHtmlD(plan.job_strategy)}</p>`;
+    wrap.appendChild(jobEl);
+  }
+
+  if (plan.grad_school_advice) {
+    const gradEl = document.createElement('div');
+    gradEl.className = 'life-strategy-block';
+    gradEl.innerHTML = `<h4>Grad School Advice</h4><p>${escapeHtmlD(plan.grad_school_advice)}</p>`;
+    wrap.appendChild(gradEl);
+  }
+
+  pane.appendChild(wrap);
+}
+
+function escapeHtmlD(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -326,7 +517,7 @@ function buildPassedCard(item) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   REQUIREMENTS TAB
+   REQUIREMENTS TAB  —  simplified assist.org link list
 ══════════════════════════════════════════════════════════════════ */
 
 function renderRequirementsTab() {
@@ -334,210 +525,45 @@ function renderRequirementsTab() {
   if (!pane) return;
   pane.innerHTML = '';
 
-  const note = document.createElement('div');
-  note.className = 'req-note';
-  note.innerHTML = `Always verify course articulation at <a href="https://www.assist.org" target="_blank" rel="noopener">assist.org</a>. Check off courses as you complete them - your progress saves automatically.`;
-  pane.appendChild(note);
+  const header = document.createElement('div');
+  header.className = 'list-tab-header';
+  header.innerHTML = `
+    <h3 class="list-tab-title">☑ Course Requirements</h3>
+    <p class="list-tab-sub">Official articulation lives on assist.org — the single source of truth for which IVC courses transfer. Click any school below to see the exact course list for ${escapeHtmlD(student.major || 'your major')}.</p>
+  `;
+  pane.appendChild(header);
 
-  // Use balancedList as the canonical set of schools for requirements
-  const schools = (balancedList.length > 0 ? balancedList : fitList).map(x => x.school);
+  // Use balancedList as the canonical set of schools
+  const schools = ((balancedList.length > 0 ? balancedList : fitList) || []).map(x => x.school);
+
+  const list = document.createElement('div');
+  list.className = 'assist-list';
 
   schools.forEach(school => {
-    const typeClass  = school.type.toLowerCase().replace(/ /g, '-');
-    const schoolData = (typeof COURSE_REQUIREMENTS !== 'undefined')
-      ? COURSE_REQUIREMENTS?.[school.id]?.[student.major]
-      : null;
+    const card = document.createElement('div');
+    card.className = 'assist-card';
 
-    const block = document.createElement('div');
-    block.className = 'req-school-block';
-
-    block.innerHTML = `
-      <div class="req-school-name">
-        <div class="school-card-stripe ${typeClass}" style="position:relative;width:4px;height:20px;border-radius:2px;flex-shrink:0"></div>
-        ${school.logo
-          ? `<img src="${school.logo}" alt="${school.name}" style="width:22px;height:22px;padding:2px;box-sizing:border-box;object-fit:contain;object-position:center;vertical-align:middle" onerror="this.style.display='none'">`
-          : school.emoji} ${school.name}
-        <span style="font-size:0.75rem;color:var(--muted);font-weight:400;margin-left:auto">${school.loc}</span>
+    card.innerHTML = `
+      <div class="assist-card-title">
+        ${school.logo ? `<img src="${school.logo}" alt="${school.name}" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;object-fit:contain" onerror="this.style.display='none'">` : school.emoji + ' '}
+        ${escapeHtmlD(school.name)}
       </div>
+      <div style="font-size:0.82rem;color:var(--muted)">${escapeHtmlD(school.loc)}</div>
+      <a href="https://assist.org" target="_blank" rel="noopener" class="assist-card-link">Open on assist.org →</a>
     `;
-
-    if (schoolData && schoolData.sections) {
-      const allCourses = schoolData.sections.flatMap(s => s.courses);
-      const total      = allCourses.length;
-      let   completed  = 0;
-
-      const counter = document.createElement('div');
-      counter.className   = 'checklist-counter';
-      counter.id          = `counter-${school.id}`;
-      counter.textContent = `0 / ${total} courses completed`;
-      block.appendChild(counter);
-
-      schoolData.sections.forEach(section => {
-        const sectionEl = document.createElement('div');
-        sectionEl.className = 'checklist-section';
-        const titleEl = document.createElement('div');
-        titleEl.className   = 'checklist-section-title';
-        titleEl.textContent = section.title;
-        sectionEl.appendChild(titleEl);
-
-        section.courses.forEach(course => {
-          const row = document.createElement('div');
-          row.className   = 'course-row';
-          row.dataset.key = course.key;
-
-          const cb = document.createElement('input');
-          cb.type           = 'checkbox';
-          cb.id             = `cb-${course.key}`;
-          cb.className      = 'course-checkbox';
-          cb.dataset.school = school.id;
-          cb.dataset.major  = student.major;
-          cb.dataset.key    = course.key;
-
-          const lbl = document.createElement('label');
-          lbl.htmlFor = cb.id;
-          lbl.innerHTML = `
-            <span class="course-label">${course.label}</span>
-            <span class="course-note">${course.note}</span>
-          `;
-
-          cb.addEventListener('change', () => {
-            row.classList.toggle('course-completed', cb.checked);
-            const checked   = block.querySelectorAll('.course-checkbox:checked').length;
-            const counterEl = document.getElementById(`counter-${school.id}`);
-            if (counterEl) counterEl.textContent = `${checked} / ${total} courses completed`;
-            saveCourseProgress(currentUserId, school.id, student.major, course.key, cb.checked);
-          });
-
-          row.appendChild(cb);
-          row.appendChild(lbl);
-          sectionEl.appendChild(row);
-        });
-
-        block.appendChild(sectionEl);
-      });
-
-      // Restore saved progress
-      if (window.savedCourseProgress && window.savedCourseProgress.length > 0) {
-        window.savedCourseProgress.forEach(row => {
-          if (row.school_id === school.id && row.major === student.major && row.completed) {
-            const cb = block.querySelector(`input[data-key="${row.course_key}"]`);
-            if (cb) { cb.checked = true; cb.closest('.course-row')?.classList.add('course-completed'); completed++; }
-          }
-        });
-        const counterEl = document.getElementById(`counter-${school.id}`);
-        if (counterEl && completed > 0) counterEl.textContent = `${completed} / ${total} courses completed`;
-      } else if (!currentUserId?.startsWith('guest_') && !currentUserId?.startsWith('local_')) {
-        getCourseProgress(currentUserId, school.id, student.major).then(rows => {
-          rows.forEach(row => {
-            if (row.completed) {
-              const cb = block.querySelector(`input[data-key="${row.course_key}"]`);
-              if (cb) { cb.checked = true; cb.closest('.course-row')?.classList.add('course-completed'); }
-            }
-          });
-          const checked   = block.querySelectorAll('.course-checkbox:checked').length;
-          const counterEl = document.getElementById(`counter-${school.id}`);
-          if (counterEl) counterEl.textContent = `${checked} / ${total} courses completed`;
-        });
-      }
-
-    } else {
-      // Fallback: AI-generated requirements table
-      const req        = aiData?.schools?.[school.id]?.transfer_requirements || {};
-      const coursesHtml = (req.required_courses || []).map(c => `<span>${c}</span>`).join('');
-      const table = document.createElement('table');
-      table.className = 'req-table';
-      table.innerHTML = `
-        <tr><td>Min GPA Required</td><td>${req.gpa_required || school.minGPA.toFixed(1) + ' (competitive)'}</td></tr>
-        <tr><td>IGETC</td><td>Strongly recommended - complete at IVC before transferring</td></tr>
-        <tr><td>Required Courses</td><td><div class="req-courses">${coursesHtml || '<span>See assist.org for full articulation</span>'}</div></td></tr>
-        <tr><td>IVC Notes</td><td class="ivc-note-cell">${req.ivc_notes || school.ivcPerks || 'Review IVC articulation at assist.org'}</td></tr>
-      `;
-      block.appendChild(table);
-    }
-
-    pane.appendChild(block);
+    list.appendChild(card);
   });
-}
 
-/* ══════════════════════════════════════════════════════════════════
-   YOUR PATH TAB
-══════════════════════════════════════════════════════════════════ */
+  pane.appendChild(list);
 
-async function renderYourPathTab() {
-  const pane = document.getElementById('tab-your-path');
-  if (!pane) return;
-  pane.innerHTML = '';
-
-  // Social proof: Students Like You
-  try {
-    const rows = await getRecentOutcomes(20);
-    if (rows && rows.length > 0) {
-      const gpa      = parseFloat(student.gpa);
-      const matching = rows.filter(r =>
-        r.student_major === student.major && Math.abs(r.student_gpa - gpa) <= 0.3
-      );
-      if (matching.length > 0) {
-        const section = document.createElement('div');
-        section.innerHTML = `
-          <div style="font-weight:700;font-size:1rem;color:var(--text);margin-bottom:4px">Students Like You</div>
-          <div style="font-size:0.82rem;color:var(--muted);margin-bottom:12px">IVC students with similar profiles who got accepted:</div>
-        `;
-        matching.forEach(r => {
-          const card = document.createElement('div');
-          card.style.cssText = `background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-size:0.85rem;color:var(--text);margin-bottom:6px;line-height:1.4;`;
-          card.innerHTML = `${r.student_name} (GPA ${r.student_gpa}, ${r.student_major}) admitted to <span style="color:var(--accent3)">${r.school_name}</span> (${r.year})`;
-          section.appendChild(card);
-        });
-        section.style.marginBottom = '24px';
-        pane.appendChild(section);
-      }
-    }
-  } catch (_) {}
-
-  renderExtracurricularRecommendations(pane);
-
-  const plan = aiData?.life_plan || {};
-
-  if (plan.summary) {
-    const summaryEl = document.createElement('div');
-    summaryEl.className   = 'life-summary';
-    summaryEl.textContent = plan.summary;
-    pane.appendChild(summaryEl);
-  }
-
-  const timeline = plan.timeline || [];
-  if (timeline.length > 0) {
-    const timelineEl = document.createElement('div');
-    timelineEl.className = 'timeline';
-    timeline.forEach((phase, i) => {
-      const actionsHtml = (phase.actions || []).map(a => `<li>${a}</li>`).join('');
-      const phaseEl = document.createElement('div');
-      phaseEl.className = 'timeline-phase';
-      phaseEl.innerHTML = `
-        <div class="timeline-dot dot-${i}"></div>
-        <div class="timeline-content">
-          <div class="timeline-phase-name">${phase.phase}</div>
-          <ul class="timeline-actions">${actionsHtml}</ul>
-        </div>
-      `;
-      timelineEl.appendChild(phaseEl);
-    });
-    pane.appendChild(timelineEl);
-  }
-
-  if (plan.job_strategy) {
-    const jobEl = document.createElement('div');
-    jobEl.className = 'life-strategy-block';
-    jobEl.innerHTML = `<h4>Job Strategy</h4><p>${plan.job_strategy}</p>`;
-    pane.appendChild(jobEl);
-  }
-
-  if (plan.grad_school_advice) {
-    const gradEl = document.createElement('div');
-    gradEl.className = 'life-strategy-block';
-    gradEl.innerHTML = `<h4>Grad School Advice</h4><p>${plan.grad_school_advice}</p>`;
-    pane.appendChild(gradEl);
-  }
+  const note = document.createElement('div');
+  note.className = 'assist-note';
+  note.innerHTML = `
+    <strong>Coming soon:</strong> a built-in IVC course database (maintained by the team) will let you check off courses directly in the app.
+    For now, verify every articulation on <a href="https://assist.org" target="_blank" rel="noopener" style="color:var(--accent)">assist.org</a>
+    before enrolling — it's the only official source your counselor and UC/CSU admissions will trust.
+  `;
+  pane.appendChild(note);
 }
 
 function renderExtracurricularRecommendations(pane) {

@@ -15,4 +15,5 @@ document.addEventListener('DOMContentLoaded', () => {
   setupDashboardTabs();
   setupOutcomesModal();
   startRealtimeFeed();
+  if (typeof setupUpdateProfilePanel === 'function') setupUpdateProfilePanel();
 });

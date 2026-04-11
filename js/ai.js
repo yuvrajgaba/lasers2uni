@@ -192,6 +192,29 @@ The student is applying for ${student.major || 'their major'}.
 Average competitiveness across their target schools: ${avgCompLabel} (${avgComp}/5).
 ${compAdvice}${stanfordNote}${communicationNote}`;
 
+  /* ── HONESTY RULES (injected based on GPA thresholds) ──────────── */
+  const gpaNum = parseFloat(student.gpa || 0) || 0;
+  const ecCount = (student.extracurriculars || []).length;
+  const inHonors = /actively enrolled/i.test(student.honors || '');
+
+  const honestyRules = [];
+  honestyRules.push('HONESTY RULES — FOLLOW STRICTLY:');
+  honestyRules.push('- Be realistic, not aspirational. Every school advice must include a realistic admission percentage chance for THIS student based on GPA, major competitiveness, and outcomes.');
+  honestyRules.push('- Never say "with hard work anything is possible" or similar unless the student\'s stats actually support it. Empty motivation is banned.');
+  honestyRules.push('- If this student\'s profile does not realistically match a school, SAY SO directly and recommend a stronger fit instead.');
+
+  if (gpaNum > 0 && gpaNum < 2.5) {
+    honestyRules.push(`- CRITICAL: This student has a GPA of ${gpaNum}, which is below the minimum for nearly all UCs and most CSUs. The TOP priority in admission_tips AND life_plan.summary must be "raise your GPA first before applying anywhere." Do NOT pretend UC transfer is realistic at this GPA. Point them to IVC academic recovery, grade replacement, and retaking classes. Do NOT sugarcoat this.`);
+  } else if (gpaNum > 0 && gpaNum < 3.0) {
+    honestyRules.push(`- IMPORTANT: This student's GPA (${gpaNum}) is below the competitive range for most UCs. The realistic transfer path is CSU-focused (CSUF, CSULB, SJSU, SDSU, CPP). Mention UCs ONLY as reach schools with explicit "low odds" phrasing. Advise them to aim for CSU admission as the primary plan and UC as the stretch goal.`);
+  } else if (gpaNum >= 3.8 && inHonors && ecCount >= 4) {
+    honestyRules.push(`- This student has an exceptional profile (GPA ${gpaNum}, IVC Honors active, ${ecCount} extracurriculars). Mention UC Berkeley's TAP (Transfer Alliance Project) Honors-to-Honors pathway explicitly in the Berkeley-relevant advice. UCLA and UCB are realistic targets. Do not undersell them.`);
+  }
+
+  honestyRules.push('- For each school, the admission_tips must include an explicit realistic chance (e.g. "Realistic admission chance: ~25%") calibrated against major competitiveness and this student\'s GPA gap.');
+
+  const honestySection = honestyRules.join('\n');
+
   return `You are an expert college transfer counselor at Irvine Valley College (IVC) in Irvine, CA. Generate a highly personalized transfer plan for this specific student.
 
 STUDENT PROFILE:
@@ -205,6 +228,8 @@ ${outcomesSection}
 ${swipeSection}
 
 ${competitivenessSection}
+
+${honestySection}
 
 OUTPUT GOALS:
 - Make the advice sound like it was written for this exact IVC student, not a generic transfer applicant.

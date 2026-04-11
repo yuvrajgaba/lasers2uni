@@ -96,3 +96,66 @@ create table if not exists course_progress (
 alter table course_progress
   add constraint course_progress_unique
   unique (user_id, school_id, major, course_key);
+
+-- ══════════════════════════════════════════════════════════════════
+-- Community / Match / Competitor feature tables
+-- ══════════════════════════════════════════════════════════════════
+--
+-- After creating these, ENABLE REALTIME for chat_messages:
+-- Supabase Dashboard → Database → Publications → supabase_realtime
+-- → add "chat_messages" to the publication (toggle ON).
+-- ══════════════════════════════════════════════════════════════════
+
+-- Community chat messages (one row per message, grouped by major)
+create table if not exists chat_messages (
+  id          uuid primary key default gen_random_uuid(),
+  major       text not null,
+  user_id     uuid references users(id) on delete set null,
+  display_name text not null,
+  content     text not null,
+  is_ai       boolean default false,
+  ai_context  jsonb,
+  sent_at     timestamptz default now()
+);
+
+create index if not exists chat_messages_major_sent_at_idx
+  on chat_messages (major, sent_at desc);
+
+-- Anonymous nickname assignment (adjective + animal) for each user
+create table if not exists user_nicknames (
+  user_id    uuid primary key references users(id) on delete cascade,
+  nickname   text not null unique,
+  created_at timestamptz default now()
+);
+
+-- School match conversations (one row per user+school pair)
+create table if not exists school_chats (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid references users(id) on delete cascade,
+  school_id   text not null,
+  school_name text not null,
+  messages    jsonb default '[]',
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now()
+);
+
+alter table school_chats
+  add constraint school_chats_unique_user_school
+  unique (user_id, school_id);
+
+-- Student profiles — anonymous public cards for community/competitor view
+create table if not exists student_profiles (
+  user_id          uuid primary key references users(id) on delete cascade,
+  nickname         text not null,
+  major            text,
+  gpa              numeric,
+  honors           text,
+  extracurriculars text[],
+  accepted_schools text[],
+  advice           text,
+  is_public        boolean default true,
+  updated_at       timestamptz default now()
+);
+
+create index if not exists student_profiles_major_idx
+  on student_profiles (major);

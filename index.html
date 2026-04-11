@@ -188,7 +188,7 @@
         <div class="pill-group" data-key="regions" data-multi="true">
           <button class="pill" data-val="SoCal">SoCal</button>
           <button class="pill" data-val="NorCal / Bay Area">NorCal / Bay Area</button>
-          <button class="pill" data-val="Out of State">Out of State</button>
+          <button class="pill" data-val="No Preference">No Preference</button>
         </div>
 
         <label class="field-label">What matters most to you? <span class="muted-hint">(pick all that apply)</span></label>
@@ -279,7 +279,7 @@
 
       <nav class="dash-sidebar" id="tab-bar">
         <button class="tab active" data-tab="balanced">
-          <span class="tab-icon">✦</span><span class="tab-label">Balanced</span>
+          <span class="tab-icon">✨</span><span class="tab-label">Balanced</span>
         </button>
         <button class="tab" data-tab="fit">
           <span class="tab-icon">♥</span><span class="tab-label">Best For You</span>
@@ -287,11 +287,14 @@
         <button class="tab" data-tab="rankings">
           <span class="tab-icon">↑</span><span class="tab-label">Rankings</span>
         </button>
+        <button class="tab" data-tab="competitor">
+          <span class="tab-icon">⚔</span><span class="tab-label">Your Competitor</span>
+        </button>
+        <button class="tab" data-tab="community">
+          <span class="tab-icon">◎</span><span class="tab-label">Community</span>
+        </button>
         <button class="tab" data-tab="requirements">
           <span class="tab-icon">☑</span><span class="tab-label">Requirements</span>
-        </button>
-        <button class="tab" data-tab="your-path">
-          <span class="tab-icon">→</span><span class="tab-label">Your Path</span>
         </button>
       </nav>
 
@@ -299,8 +302,9 @@
         <div class="tab-pane active" id="tab-balanced"><!-- Injected by dashboard.js --></div>
         <div class="tab-pane hidden"  id="tab-fit"><!-- Injected by dashboard.js --></div>
         <div class="tab-pane hidden"  id="tab-rankings"><!-- Injected by dashboard.js --></div>
+        <div class="tab-pane hidden"  id="tab-competitor"><!-- Injected by competitor.js --></div>
+        <div class="tab-pane hidden"  id="tab-community"><!-- Injected by community.js --></div>
         <div class="tab-pane hidden"  id="tab-requirements"><!-- Injected by dashboard.js --></div>
-        <div class="tab-pane hidden"  id="tab-your-path"><!-- Injected by dashboard.js --></div>
       </main>
 
     </div>
@@ -328,6 +332,76 @@
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════
+       MATCH OVERLAY  (Tinder-style "You Matched!")
+  ═══════════════════════════════════════════ -->
+  <div id="match-overlay" class="match-overlay hidden">
+    <div class="match-animation-wrap">
+      <div class="match-heading">
+        <div class="match-title">You Matched!</div>
+        <div class="match-sub" id="match-sub">You and <span id="match-school-name">UC Irvine</span> are a great fit.</div>
+      </div>
+      <div class="match-cards">
+        <div class="match-card match-card-left" id="match-card-left">
+          <div class="match-card-emoji" id="match-you-emoji">✦</div>
+          <div class="match-card-label">You</div>
+          <div class="match-card-name" id="match-you-name">Alex</div>
+        </div>
+        <div class="match-hearts" id="match-hearts">♥</div>
+        <div class="match-card match-card-right" id="match-card-right">
+          <div class="match-card-emoji" id="match-school-emoji">🏛</div>
+          <div class="match-card-label">School</div>
+          <div class="match-card-name" id="match-school-short">UCI</div>
+        </div>
+      </div>
+      <button class="btn-primary match-chat-btn hidden" id="btn-match-chat">Start Chatting →</button>
+      <button class="match-skip" id="btn-match-skip">Skip</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SCHOOL CHAT MODAL
+  ═══════════════════════════════════════════ -->
+  <div id="school-chat-modal" class="school-chat-modal hidden">
+    <div class="school-chat-box">
+      <header class="school-chat-header">
+        <div class="school-chat-title">
+          <span class="school-chat-emoji" id="school-chat-emoji">🏛</span>
+          <span class="school-chat-name" id="school-chat-name">UC Irvine</span>
+        </div>
+        <button class="school-chat-close" id="btn-school-chat-close" title="Close">✕</button>
+      </header>
+      <div class="school-chat-messages" id="school-chat-messages">
+        <!-- Messages injected by match.js -->
+      </div>
+      <div class="school-chat-input-row">
+        <input type="text" id="school-chat-input" placeholder="Ask this school anything…" autocomplete="off" />
+        <button class="btn-primary" id="btn-school-chat-send">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       UPDATE PROFILE PANEL  (slide-up)
+  ═══════════════════════════════════════════ -->
+  <button id="btn-open-update" class="btn-open-update" title="Update your profile">↺ Update</button>
+
+  <div id="update-profile-panel" class="update-profile-panel hidden">
+    <div class="update-panel-inner">
+      <header class="update-panel-header">
+        <h3>Update Your Profile</h3>
+        <button class="update-panel-close" id="btn-update-close" title="Close">✕</button>
+      </header>
+      <div class="update-panel-body" id="update-panel-body">
+        <!-- Injected by update-profile.js -->
+      </div>
+      <div class="update-panel-actions">
+        <button class="btn-ghost" id="btn-update-cancel">Cancel</button>
+        <button class="btn-primary" id="btn-update-save">↺ Re-run my matches</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast container -->
   <div id="toast-container"></div>
 
@@ -339,13 +413,16 @@
   ═══════════════════════════════════════════ -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/schools.js"></script>
-  <script src="js/courses.js"></script>
   <script src="js/scoring.js"></script>
   <script src="js/ai.js"></script>
   <script src="js/supabase.js"></script>
   <script src="js/state.js"></script>
   <script src="js/onboarding.js"></script>
   <script src="js/swipe.js"></script>
+  <script src="js/match.js"></script>
+  <script src="js/community.js"></script>
+  <script src="js/competitor.js"></script>
+  <script src="js/update-profile.js"></script>
   <script src="js/dashboard.js"></script>
   <script src="js/outcomes.js"></script>
   <script src="js/auth.js"></script>

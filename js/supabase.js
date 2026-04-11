@@ -449,3 +449,268 @@ async function getSimilarStudentOutcomes(studentGpa, schoolId) {
     return data || [];
   } catch (_) { return []; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ANONYMOUS NICKNAMES
+   Adjective + animal pair assigned once per user.
+═══════════════════════════════════════════════════════════════ */
+
+const NICKNAME_ADJECTIVES = [
+  'silent','brave','calm','swift','bold','quiet','clever','gentle',
+  'curious','fierce','kind','lucky','mellow','noble','proud','sly',
+  'stellar','witty','zesty','daring','eager','humble','jolly','keen',
+  'lively','merry','peppy','quirky','radiant','snappy','tidy','vivid'
+];
+
+const NICKNAME_ANIMALS = [
+  'fox','owl','wolf','hawk','lion','otter','panda','tiger','bear','lynx',
+  'eagle','falcon','koala','heron','raven','dolphin','seal','crane','moose','swan',
+  'badger','beaver','cobra','dingo','elk','gecko','ibex','jaguar','kiwi','llama'
+];
+
+function randomNickname() {
+  const a = NICKNAME_ADJECTIVES[Math.floor(Math.random() * NICKNAME_ADJECTIVES.length)];
+  const b = NICKNAME_ANIMALS[Math.floor(Math.random() * NICKNAME_ANIMALS.length)];
+  return `${a}_${b}`;
+}
+
+/**
+ * getOrCreateNickname()
+ * Returns the user's stored nickname or creates one on first call.
+ *
+ * @param {string} userId
+ * @returns {Promise<string>}
+ */
+async function getOrCreateNickname(userId) {
+  if (!userId) return randomNickname();
+  const client = getClient();
+  if (!client || userId.startsWith('guest_') || userId.startsWith('local_')) {
+    return randomNickname();
+  }
+  try {
+    const { data: existing } = await client
+      .from('user_nicknames')
+      .select('nickname')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (existing && existing.nickname) return existing.nickname;
+
+    // Try a few times in case of collision (nickname is unique)
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const nickname = randomNickname();
+      const { data, error } = await client
+        .from('user_nicknames')
+        .insert([{ user_id: userId, nickname }])
+        .select()
+        .single();
+      if (!error && data) return data.nickname;
+    }
+    // Fallback: append a numeric suffix
+    const fallback = randomNickname() + '_' + Math.floor(Math.random() * 9999);
+    await client.from('user_nicknames').insert([{ user_id: userId, nickname: fallback }]);
+    return fallback;
+  } catch (_) {
+    return randomNickname();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COMMUNITY CHAT (per-major)
+═══════════════════════════════════════════════════════════════ */
+
+/**
+ * getChatMessages()
+ * Returns the most recent messages for a given major, oldest-first.
+ */
+async function getChatMessages(major, limit = 50) {
+  const client = getClient();
+  if (!client || !major) return [];
+  try {
+    const { data, error } = await client
+      .from('chat_messages')
+      .select('*')
+      .eq('major', major)
+      .order('sent_at', { ascending: false })
+      .limit(limit);
+    if (error) return [];
+    return (data || []).reverse();
+  } catch (_) { return []; }
+}
+
+/**
+ * saveChatMessage()
+ * Inserts a single community chat message.
+ */
+async function saveChatMessage(userId, major, displayName, content, isAi = false) {
+  const client = getClient();
+  if (!client || !major || !content) return null;
+  try {
+    const row = {
+      major,
+      display_name: displayName || 'anonymous',
+      content,
+      is_ai: !!isAi
+    };
+    if (userId && !userId.startsWith('guest_') && !userId.startsWith('local_')) {
+      row.user_id = userId;
+    }
+    const { data, error } = await client
+      .from('chat_messages')
+      .insert([row])
+      .select()
+      .single();
+    if (error) return null;
+    return data;
+  } catch (_) { return null; }
+}
+
+/**
+ * subscribeToChat()
+ * Realtime subscription to new chat_messages rows for a given major.
+ */
+function subscribeToChat(major, callback) {
+  const client = getClient();
+  if (!client || !major) return null;
+  const channelName = 'chat-' + major.toLowerCase().replace(/\s+/g, '-');
+  const channel = client
+    .channel(channelName)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `major=eq.${major}` },
+      payload => {
+        if (typeof callback === 'function') callback(payload.new);
+      }
+    )
+    .subscribe(status => {
+      if (status === 'SUBSCRIBED') {
+        console.info(`[supabase.js] Chat realtime subscribed: ${channelName}`);
+      }
+    });
+  return channel;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCHOOL CHAT (one conversation per user+school)
+═══════════════════════════════════════════════════════════════ */
+
+/**
+ * getSchoolChat()
+ * Returns the saved conversation for a user+school, or null.
+ */
+async function getSchoolChat(userId, schoolId) {
+  const client = getClient();
+  if (!client || !userId || !schoolId) return null;
+  if (userId.startsWith('guest_') || userId.startsWith('local_')) return null;
+  try {
+    const { data, error } = await client
+      .from('school_chats')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('school_id', schoolId)
+      .maybeSingle();
+    if (error) return null;
+    return data;
+  } catch (_) { return null; }
+}
+
+/**
+ * saveSchoolChat()
+ * Upserts the full message array for a user+school pair.
+ */
+async function saveSchoolChat(userId, schoolId, schoolName, messages) {
+  const client = getClient();
+  if (!client || !userId || !schoolId) return null;
+  if (userId.startsWith('guest_') || userId.startsWith('local_')) return null;
+  try {
+    const { data, error } = await client
+      .from('school_chats')
+      .upsert([{
+        user_id:     userId,
+        school_id:   schoolId,
+        school_name: schoolName,
+        messages:    messages || [],
+        updated_at:  new Date().toISOString()
+      }], { onConflict: 'user_id,school_id' })
+      .select()
+      .single();
+    if (error) return null;
+    return data;
+  } catch (_) { return null; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STUDENT PROFILES (public anonymous cards)
+═══════════════════════════════════════════════════════════════ */
+
+/**
+ * getStudentProfile()
+ * Returns a single user's student_profiles row, or null.
+ */
+async function getStudentProfile(userId) {
+  const client = getClient();
+  if (!client || !userId) return null;
+  if (userId.startsWith('guest_') || userId.startsWith('local_')) return null;
+  try {
+    const { data, error } = await client
+      .from('student_profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) return null;
+    return data;
+  } catch (_) { return null; }
+}
+
+/**
+ * upsertStudentProfile()
+ * Creates or updates the public profile card for a user.
+ *
+ * @param {string} userId
+ * @param {Object} profileData – { nickname, major, gpa, honors, extracurriculars, accepted_schools, advice, is_public }
+ */
+async function upsertStudentProfile(userId, profileData) {
+  const client = getClient();
+  if (!client || !userId || !profileData) return null;
+  if (userId.startsWith('guest_') || userId.startsWith('local_')) return null;
+  try {
+    const row = {
+      user_id:          userId,
+      nickname:         profileData.nickname         || 'anonymous',
+      major:            profileData.major            || null,
+      gpa:              profileData.gpa != null ? parseFloat(profileData.gpa) : null,
+      honors:           profileData.honors           || null,
+      extracurriculars: profileData.extracurriculars || [],
+      accepted_schools: profileData.accepted_schools || [],
+      advice:           profileData.advice           || null,
+      is_public:        profileData.is_public !== false,
+      updated_at:       new Date().toISOString()
+    };
+    const { data, error } = await client
+      .from('student_profiles')
+      .upsert([row], { onConflict: 'user_id' })
+      .select()
+      .single();
+    if (error) return null;
+    return data;
+  } catch (_) { return null; }
+}
+
+/**
+ * getProfilesByMajor()
+ * Returns public profile cards for a given major (anonymous community feed).
+ */
+async function getProfilesByMajor(major) {
+  const client = getClient();
+  if (!client || !major) return [];
+  try {
+    const { data, error } = await client
+      .from('student_profiles')
+      .select('*')
+      .eq('major', major)
+      .eq('is_public', true)
+      .order('updated_at', { ascending: false })
+      .limit(20);
+    if (error) return [];
+    return data || [];
+  } catch (_) { return []; }
+}
