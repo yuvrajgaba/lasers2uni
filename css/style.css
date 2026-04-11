@@ -31,6 +31,12 @@
 
 html { font-size: 16px; -webkit-text-size-adjust: 100%; }
 
+img {
+  display: block;
+  max-width: 100%;
+  background: transparent;
+}
+
 body {
   font-family: 'Satoshi', system-ui, sans-serif;
   background: var(--bg);
@@ -147,7 +153,11 @@ a:hover { text-decoration: underline; }
 .strip-logo {
   width: 44px;
   height: 44px;
+  padding: 4px;
+  box-sizing: border-box;
   object-fit: contain;
+  object-position: center;
+  background: transparent;
   transition: transform 0.15s ease, opacity 0.15s;
   opacity: 0.85;
 }
@@ -499,7 +509,14 @@ a:hover { text-decoration: underline; }
   overflow: auto;
 }
 .card-emoji  { font-size: 2.2rem; line-height: 1; display: flex; align-items: center; justify-content: center; }
-.school-logo-img { width: 64px; height: 64px; object-fit: contain; }
+.school-logo-img {
+  width: 64px;
+  height: 64px;
+  padding: 6px;
+  box-sizing: border-box;
+  object-fit: contain;
+  object-position: center;
+}
 .card-name   { font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 700; }
 .card-loc    { font-size: 0.82rem; color: var(--muted); margin-top: -6px; }
 .card-tagline { font-size: 0.88rem; color: var(--text); opacity: 0.8; font-style: italic; }
@@ -867,6 +884,33 @@ a:hover { text-decoration: underline; }
 
 .school-card-header { padding-left: 20px; }
 
+.school-card-logo {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+.school-card-logo-img {
+  width: 48px;
+  height: 48px;
+  padding: 4px;
+  box-sizing: border-box;
+  object-fit: contain;
+  object-position: center;
+  background: transparent;
+}
+.school-card-logo-img.fallback,
+.req-school-logo-img.fallback {
+  font-size: 1.5rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .school-card-info { flex: 1; min-width: 0; }
 .school-card-name {
   font-family: 'Syne', sans-serif;
@@ -998,6 +1042,24 @@ a:hover { text-decoration: underline; }
   display: flex;
   align-items: center;
   gap: 10px;
+}
+.req-school-logo {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: transparent;
+}
+.req-school-logo-img {
+  width: 32px;
+  height: 32px;
+  padding: 2px;
+  box-sizing: border-box;
+  object-fit: contain;
+  object-position: center;
+  background: transparent;
 }
 .req-table {
   width: 100%;

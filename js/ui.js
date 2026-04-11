@@ -715,7 +715,7 @@ function buildDashboardSchoolCard(item, admitClass) {
   card.innerHTML = `
     <div class="school-card-header">
       <div class="school-card-stripe ${typeClass}"></div>
-      <div style="font-size:1.5rem;flex-shrink:0">${school.emoji}</div>
+      <div class="school-card-logo">${renderSchoolAvatar(school)}</div>
       <div class="school-card-info">
         <div class="school-card-name">${school.name}</div>
         <div class="school-card-loc">${school.loc} · Min GPA ${school.minGPA.toFixed(1)}</div>
@@ -752,6 +752,22 @@ function buildDashboardSchoolCard(item, admitClass) {
   return card;
 }
 
+function renderSchoolAvatar(school, className = 'school-card-logo-img') {
+  if (school.logo) {
+    return `
+      <img
+        src="${school.logo}"
+        alt="${school.name}"
+        class="${className}"
+        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+      >
+      <span class="${className} fallback" style="display:none">${school.emoji}</span>
+    `;
+  }
+
+  return `<span class="${className} fallback">${school.emoji}</span>`;
+}
+
 /* ── Requirements tab ───────────────────────────────────────────── */
 
 function renderRequirementsTab() {
@@ -785,7 +801,8 @@ function renderRequirementsTab() {
     block.innerHTML = `
       <div class="req-school-name">
         <div class="school-card-stripe ${typeClass}" style="position:relative;width:4px;height:20px;border-radius:2px;flex-shrink:0"></div>
-        ${school.emoji} ${school.name}
+        <span class="req-school-logo">${renderSchoolAvatar(school, 'req-school-logo-img')}</span>
+        ${school.name}
         <span style="font-size:0.75rem;color:var(--muted);font-weight:400;margin-left:auto">${school.loc}</span>
       </div>
       <table class="req-table">
