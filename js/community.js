@@ -1,15 +1,38 @@
 /**
  * community.js
- * Community tab — Transfer Wall + per-major chat + profile modal.
+ * Community tab — Transfer Wall (polaroid) + per-major chat + profile modal.
  * AI coach via callOllama() (defined in ai.js).
  *
- * NOTE: Run this in Supabase SQL Editor before deploying:
+ * NOTE: Run this SQL before deploying:
  *   ALTER TABLE outcomes ADD COLUMN IF NOT EXISTS advice text;
  */
 
-let _communityChannel  = null;
+/* ── module state ─────────────────────────────────────────────── */
+let _communityChannel  = null;   // chat realtime channel
 let _communityMajor    = null;
 let _communityNickname = null;
+let _wallChannel       = null;   // outcomes realtime channel (wall)
+const _pendingSavedIds = new Set(); // dedup optimistic chat messages
+
+/* ── school background colors for polaroid photo area ─────────── */
+const SCHOOL_BG = {
+  'UCLA':          '#2774AE',
+  'UCSD':          '#00629B',
+  'UCI':           '#0064A4',
+  'UC Berkeley':   '#FDB515',
+  'UCB':           '#FDB515',
+  'UCSB':          '#003660',
+  'UCSC':          '#003C40',
+  'UCR':           '#003DA5',
+  'UC Merced':     '#002856',
+  'UCM':           '#002856',
+  'Cal Poly SLO':  '#154734',
+  'SDSU':          '#A6192E',
+  'CSULB':         '#FAC817',
+  'CSUN':          '#D2001E',
+  'LMU':           '#00539B',
+  'USC':           '#990000',
+};
 
 /* ══════════════════════════════════════════════════════════════════
    RENDER COMMUNITY TAB
@@ -19,7 +42,7 @@ async function renderCommunityTab(pane) {
   if (!pane) return;
   const major = (typeof student !== 'undefined' && student && student.major) ? student.major : 'General';
 
-  // Clear any existing badge when this tab is opened
+  // Clear badge when tab is opened
   const tabBtn = document.querySelector('[data-tab="community"]');
   if (tabBtn) { const b = tabBtn.querySelector('.tab-badge'); if (b) b.remove(); }
 
@@ -57,7 +80,7 @@ async function renderCommunityTab(pane) {
           <h3>${_esc(major)} chat</h3>
           <div class="muted">Realtime · anonymous nicknames</div>
         </div>
-        <div class="community-chat-feed" id="community-chat-feed">
+        <div class="community-chat-feed" id="chat-feed">
           <div class="community-msg"><div class="community-msg-body muted">Loading messages…</div></div>
         </div>
         <div class="community-mentions-hint">
@@ -92,23 +115,24 @@ async function renderCommunityTab(pane) {
     inputEl.value = '';
     sendChatMessage(v);
   };
-  inputEl.onkeydown = (e) => { if (e.key === 'Enter') document.getElementById('community-chat-send')?.click(); };
+  inputEl.onkeydown = e => { if (e.key === 'Enter') document.getElementById('community-chat-send')?.click(); };
 
-  // Load Transfer Wall
   loadTransferWall();
-
-  // Load major chat
   await loadChatForMajor(major);
-
-  // Load profiles sidebar
   loadProfilesSidebar(major);
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   TRANSFER WALL
+   TRANSFER WALL  (polaroid)
 ══════════════════════════════════════════════════════════════════ */
 
 async function loadTransferWall() {
+  // Tear down previous wall subscription
+  if (_wallChannel) {
+    try { _wallChannel.unsubscribe?.(); } catch (_) {}
+    _wallChannel = null;
+  }
+
   let outcomes = [];
   if (typeof getRecentOutcomes === 'function') {
     outcomes = await getRecentOutcomes(100) || [];
@@ -124,106 +148,174 @@ async function loadTransferWall() {
 
   if (!accepted.length) {
     feed.innerHTML = '<div class="community-msg"><div class="community-msg-body muted">No acceptances reported yet — be the first! Click "🎉 Report Your Acceptance".</div></div>';
-    return;
-  }
-
-  // Group by student_name
-  const byStudent = {};
-  accepted.forEach(row => {
-    if (!byStudent[row.student_name]) {
-      byStudent[row.student_name] = {
-        name:   row.student_name,
-        major:  row.student_major,
-        gpa:    row.student_gpa,
-        schools: [],
-        year:   row.year,
-        advice: row.advice || null
-      };
-    }
-    byStudent[row.student_name].schools.push(row.school_name);
-    if (row.advice && !byStudent[row.student_name].advice) {
-      byStudent[row.student_name].advice = row.advice;
-    }
-  });
-
-  Object.values(byStudent)
-    .sort((a, b) => (b.year || 0) - (a.year || 0))
-    .forEach(s => feed.appendChild(buildWallCard(s)));
-
-  // Realtime: prepend new accepted outcomes as they arrive
-  if (typeof subscribeToOutcomes === 'function') {
-    subscribeToOutcomes(newRow => {
-      if (!newRow.accepted) return;
-
-      const feed2 = document.getElementById('wall-feed');
-      if (feed2) {
-        const card = buildWallCard({
-          name: newRow.student_name,
-          major: newRow.student_major,
-          gpa: newRow.student_gpa,
-          schools: [newRow.school_name],
-          year: newRow.year,
-          advice: newRow.advice || null
-        });
-        feed2.prepend(card);
+  } else {
+    // Group by student_name
+    const byStudent = {};
+    accepted.forEach(row => {
+      if (!byStudent[row.student_name]) {
+        byStudent[row.student_name] = {
+          name:   row.student_name,
+          major:  row.student_major,
+          gpa:    row.student_gpa,
+          schools: [],
+          year:   row.year,
+          advice: row.advice || null
+        };
       }
-
-      const c = document.getElementById('wall-count');
-      if (c) c.textContent = (parseInt(c.textContent) || 0) + 1;
-
-      // Badge on Community tab instead of toast
-      const tabBtn = document.querySelector('[data-tab="community"]');
-      if (tabBtn) {
-        let badge = tabBtn.querySelector('.tab-badge');
-        if (!badge) {
-          badge = document.createElement('span');
-          badge.className = 'tab-badge';
-          tabBtn.appendChild(badge);
-        }
-        badge.textContent = (parseInt(badge.textContent) || 0) + 1;
+      byStudent[row.student_name].schools.push(row.school_name);
+      if (row.advice && !byStudent[row.student_name].advice) {
+        byStudent[row.student_name].advice = row.advice;
       }
     });
+
+    Object.values(byStudent)
+      .sort((a, b) => (b.year || 0) - (a.year || 0))
+      .forEach(s => feed.appendChild(buildWallCard(s)));
+
+    // Draw SVG connection lines after layout settles
+    setTimeout(drawWallConnections, 100);
+  }
+
+  // Direct realtime subscription (separate channel from outcomes.js)
+  const client = (typeof getClient === 'function') ? getClient() : null;
+  if (client) {
+    _wallChannel = client
+      .channel('outcomes-wall')
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'outcomes' },
+        payload => {
+          const newRow = payload.new;
+          if (!newRow.accepted) return;
+
+          const feed2 = document.getElementById('wall-feed');
+          if (!feed2) return;
+
+          // Remove placeholder
+          const ph = feed2.querySelector('.community-msg');
+          if (ph) ph.remove();
+
+          feed2.prepend(buildWallCard({
+            name:    newRow.student_name,
+            major:   newRow.student_major,
+            gpa:     newRow.student_gpa,
+            schools: [newRow.school_name],
+            year:    newRow.year,
+            advice:  newRow.advice || null
+          }));
+
+          setTimeout(drawWallConnections, 150);
+
+          const c = document.getElementById('wall-count');
+          if (c) c.textContent = (parseInt(c.textContent) || 0) + 1;
+
+          // Notification badge on Community tab
+          const tab = document.querySelector('[data-tab="community"]');
+          if (tab) {
+            let badge = tab.querySelector('.tab-badge');
+            if (!badge) {
+              badge = document.createElement('span');
+              badge.className = 'tab-badge';
+              tab.appendChild(badge);
+            }
+            badge.textContent = (parseInt(badge.textContent) || 0) + 1;
+          }
+        }
+      )
+      .subscribe(status => {
+        if (status === 'SUBSCRIBED') console.info('[community.js] Wall realtime subscribed.');
+      });
   }
 }
+
+// Global so outcomes.js can call window.refreshTransferWall()
+window.refreshTransferWall = loadTransferWall;
+
+/* ─── Polaroid card builder ───────────────────────────────────── */
 
 function buildWallCard(s) {
   const card = document.createElement('div');
   card.className = 'wall-card';
 
-  const anonName = anonymizeName(s.name);
-  const gpaRange = getGpaRange(s.gpa);
+  // Deterministic tilt: −5° to +5°
+  const hash = (s.name || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  card.style.setProperty('--rotation', ((hash % 11) - 5) + 'deg');
 
-  const schoolPills = (s.schools || []).map(schoolName => {
-    const schoolData = (typeof SCHOOLS !== 'undefined')
-      ? SCHOOLS.find(sc => sc.name === schoolName) : null;
-    return `<span style="background:rgba(61,232,160,0.12);color:var(--accent3);border-radius:99px;padding:2px 10px;font-size:0.75rem;font-weight:600;border:1px solid rgba(61,232,160,0.25)">
-      ${schoolData ? schoolData.emoji : '🎓'} ${_esc(schoolName)}
-    </span>`;
-  }).join('');
+  const anonName   = anonymizeName(s.name);
+  const gpaRange   = getGpaRange(s.gpa);
+  const mainSchool = (s.schools || [])[0] || '';
+  const schoolData = (typeof SCHOOLS !== 'undefined') ? SCHOOLS.find(sc => sc.name === mainSchool) : null;
+  const mainEmoji  = schoolData?.emoji || '🎓';
+  const photoBg    = SCHOOL_BG[mainSchool] || '#1a3a5c';
+
+  const schoolPills = (s.schools || []).map(sn =>
+    `<span class="wall-card-school-pill">${_esc(sn)}</span>`
+  ).join('');
 
   card.innerHTML = `
-    <div class="wall-card-header">
-      <div>
-        <span class="wall-card-name">${_esc(anonName)}</span>
-        <span class="wall-card-meta"> · ${_esc(s.major || 'Unknown major')} · GPA ${_esc(gpaRange)}</span>
-      </div>
-      <button class="wall-react-btn" data-count="0">🤍 0</button>
+    <div class="wall-card-photo" style="background:${photoBg}">
+      <span>${mainEmoji}</span>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${schoolPills}</div>
-    ${s.advice ? `<div class="wall-card-advice">${_esc(s.advice)}</div>` : ''}
+    <div class="wall-card-name">${_esc(anonName)}</div>
+    <div class="wall-card-meta">${_esc(s.major || 'Unknown major')} · GPA ${_esc(gpaRange)}</div>
+    <div class="wall-card-school">${schoolPills}</div>
+    ${s.advice ? `<div class="wall-card-advice">"${_esc(s.advice)}"</div>` : ''}
+    <button class="wall-react-btn" data-count="0">🤍 0</button>
+    <span class="wall-card-year">${s.year || ''}</span>
   `;
 
   const reactBtn = card.querySelector('.wall-react-btn');
   reactBtn.addEventListener('click', () => {
     const isReacted = reactBtn.classList.toggle('reacted');
-    const count = parseInt(reactBtn.dataset.count) || 0;
-    const newCount = isReacted ? count + 1 : Math.max(0, count - 1);
+    const count     = parseInt(reactBtn.dataset.count) || 0;
+    const newCount  = isReacted ? count + 1 : Math.max(0, count - 1);
     reactBtn.dataset.count = newCount;
-    reactBtn.textContent = isReacted ? `❤️ ${newCount}` : `🤍 ${newCount}`;
+    reactBtn.textContent   = isReacted ? `❤️ ${newCount}` : `🤍 ${newCount}`;
   });
 
   return card;
 }
+
+/* ─── SVG connection lines ────────────────────────────────────── */
+
+function drawWallConnections() {
+  const feed = document.getElementById('wall-feed');
+  if (!feed) return;
+
+  feed.querySelectorAll('.wall-connections').forEach(el => el.remove());
+
+  const cards = Array.from(feed.querySelectorAll('.wall-card'));
+  if (cards.length < 2) return;
+
+  const feedRect = feed.getBoundingClientRect();
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.classList.add('wall-connections');
+  svg.setAttribute('width',  feed.offsetWidth);
+  svg.setAttribute('height', feed.offsetHeight);
+
+  const limit = Math.min(cards.length - 1, 8);
+  for (let i = 0; i < limit; i++) {
+    const r1 = cards[i].getBoundingClientRect();
+    const r2 = cards[i + 1].getBoundingClientRect();
+    const x1 = (r1.left - feedRect.left + r1.width  / 2).toFixed(1);
+    const y1 = (r1.top  - feedRect.top  + r1.height / 2).toFixed(1);
+    const x2 = (r2.left - feedRect.left + r2.width  / 2).toFixed(1);
+    const y2 = (r2.top  - feedRect.top  + r2.height / 2).toFixed(1);
+
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', x1);
+    line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2);
+    line.setAttribute('y2', y2);
+    line.setAttribute('stroke', 'rgba(255,180,50,0.22)');
+    line.setAttribute('stroke-width', '1.5');
+    line.setAttribute('stroke-dasharray', '5,5');
+    svg.appendChild(line);
+  }
+
+  feed.prepend(svg);
+}
+
+/* ─── helpers ─────────────────────────────────────────────────── */
 
 function anonymizeName(realName) {
   const adjectives = ['Silent','Brave','Calm','Swift','Bold','Clever','Fierce','Gentle','Happy','Mighty','Proud','Noble','Keen','Jolly','Witty'];
@@ -242,17 +334,18 @@ function getGpaRange(gpa) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   COMMUNITY CHAT
+   COMMUNITY CHAT  (realtime with optimistic updates + dedup)
 ══════════════════════════════════════════════════════════════════ */
 
 async function loadChatForMajor(major) {
+  // Unsubscribe previous channel
   if (_communityChannel) {
-    try { _communityChannel.unsubscribe && _communityChannel.unsubscribe(); } catch (_) {}
+    try { _communityChannel.unsubscribe?.(); } catch (_) {}
     _communityChannel = null;
   }
   _communityMajor = major;
 
-  const feed = document.getElementById('community-chat-feed');
+  const feed = document.getElementById('chat-feed');
   if (!feed) return;
   feed.innerHTML = '';
 
@@ -266,20 +359,24 @@ async function loadChatForMajor(major) {
       No messages yet. Be the first — or type <strong>@coach</strong> for AI advice.
     </div></div>`;
   } else {
-    messages.forEach(m => appendMessage(m));
-    scrollCommunityToBottom();
+    messages.forEach(m => appendMessageToFeed(m));
+    scrollChatToBottom();
   }
 
+  // Subscribe with dedup: skip rows already rendered via optimistic update
   if (typeof subscribeToChat === 'function') {
     _communityChannel = subscribeToChat(major, row => {
-      appendMessage(row);
-      scrollCommunityToBottom();
+      const f = document.getElementById('chat-feed');
+      if (!f) return;
+      if (row.id && (f.querySelector(`[data-msg-id="${row.id}"]`) || _pendingSavedIds.has(String(row.id)))) return;
+      appendMessageToFeed(row);
+      scrollChatToBottom();
     });
   }
 }
 
-function appendMessage(msg) {
-  const feed = document.getElementById('community-chat-feed');
+function appendMessageToFeed(msg) {
+  const feed = document.getElementById('chat-feed');
   if (!feed) return;
 
   // Clear placeholder
@@ -287,31 +384,38 @@ function appendMessage(msg) {
     feed.innerHTML = '';
   }
 
-  const div  = document.createElement('div');
+  const div = document.createElement('div');
   div.className = 'community-msg';
+  if (msg.id) div.dataset.msgId = String(msg.id);
 
   const head = document.createElement('div');
   head.className = 'community-msg-head';
 
   const name = document.createElement('span');
   name.className = 'community-msg-name' + (msg.is_ai ? ' ai' : '');
-  name.textContent = msg.is_ai ? '🤖 Transfer Coach' : (msg.display_name || 'anonymous');
 
-  // Non-AI names are clickable → profile modal
-  if (!msg.is_ai && msg.display_name) {
+  if (msg.is_ai) {
+    name.textContent = '🤖 Transfer Coach';
+  } else {
+    const displayName = msg.display_name || 'anonymous';
+    name.textContent = displayName;
     name.classList.add('clickable-name');
-    name.addEventListener('click', () => showProfileModal(msg.display_name));
+    name.dataset.userId      = msg.user_id  || '';
+    name.dataset.displayName = displayName;
+    name.addEventListener('click', () =>
+      openUserProfile(name.dataset.userId, name.dataset.displayName)
+    );
   }
 
   const time = document.createElement('span');
-  time.className = 'community-msg-time';
+  time.className   = 'community-msg-time';
   time.textContent = formatChatTime(msg.sent_at);
 
   head.appendChild(name);
   head.appendChild(time);
 
   const body = document.createElement('div');
-  body.className = 'community-msg-body' + (msg.is_ai ? ' coach-msg' : '');
+  body.className   = 'community-msg-body' + (msg.is_ai ? ' coach-msg' : '');
   body.textContent = msg.content;
 
   div.appendChild(head);
@@ -319,8 +423,8 @@ function appendMessage(msg) {
   feed.appendChild(div);
 }
 
-function scrollCommunityToBottom() {
-  const feed = document.getElementById('community-chat-feed');
+function scrollChatToBottom() {
+  const feed = document.getElementById('chat-feed');
   if (feed) feed.scrollTop = feed.scrollHeight;
 }
 
@@ -341,14 +445,33 @@ async function sendChatMessage(content) {
   const name   = _communityNickname || 'anonymous';
   const userId = (typeof currentUserId !== 'undefined') ? currentUserId : null;
 
+  // Optimistic update — show immediately
+  const tempId = 'temp_' + Date.now();
+  appendMessageToFeed({
+    id:           tempId,
+    display_name: name,
+    content,
+    sent_at:      new Date().toISOString(),
+    is_ai:        false,
+    user_id:      userId
+  });
+  scrollChatToBottom();
+
+  // Persist
   if (typeof saveChatMessage === 'function') {
-    await saveChatMessage(userId, _communityMajor, name, content, false);
-  } else {
-    appendMessage({ display_name: name, content, sent_at: new Date().toISOString() });
-    scrollCommunityToBottom();
+    const saved = await saveChatMessage(userId, _communityMajor, name, content, false);
+    if (saved?.id) {
+      const realId = String(saved.id);
+      _pendingSavedIds.add(realId);
+      setTimeout(() => _pendingSavedIds.delete(realId), 8000);
+      // Swap temp marker → real ID so future dedup works
+      const feed = document.getElementById('chat-feed');
+      const tempEl = feed?.querySelector(`[data-msg-id="${tempId}"]`);
+      if (tempEl) tempEl.dataset.msgId = realId;
+    }
   }
 
-  // AI coach triggers
+  // AI coach trigger
   if (/@coach|@ai|@bot|@transfer/i.test(content)) {
     await handleAICoachMessage(content, _communityMajor);
   }
@@ -357,8 +480,8 @@ async function sendChatMessage(content) {
 async function handleAICoachMessage(userMessage, major) {
   const userId = (typeof currentUserId !== 'undefined') ? currentUserId : null;
 
-  // Show typing indicator in chat feed
-  const feed = document.getElementById('community-chat-feed');
+  // Typing indicator
+  const feed = document.getElementById('chat-feed');
   let typingEl = null;
   if (feed) {
     typingEl = document.createElement('div');
@@ -375,7 +498,7 @@ async function handleAICoachMessage(userMessage, major) {
         </span>
       </div>`;
     feed.appendChild(typingEl);
-    scrollCommunityToBottom();
+    scrollChatToBottom();
   }
 
   // Build outcomes context
@@ -383,7 +506,7 @@ async function handleAICoachMessage(userMessage, major) {
   try {
     if (typeof getRecentOutcomes === 'function') {
       const rows = await getRecentOutcomes(20);
-      if (rows && rows.length) {
+      if (rows?.length) {
         const majorRows = rows.filter(r => r.student_major === major && r.accepted);
         if (majorRows.length) {
           outcomesContext = '\nRecent IVC acceptances for this major:\n' +
@@ -424,8 +547,8 @@ Rules:
   if (typeof saveChatMessage === 'function') {
     await saveChatMessage(userId, major, 'Transfer Coach', text, true);
   } else {
-    appendMessage({ display_name: 'Transfer Coach', content: text, is_ai: true, sent_at: new Date().toISOString() });
-    scrollCommunityToBottom();
+    appendMessageToFeed({ display_name: 'Transfer Coach', content: text, is_ai: true, sent_at: new Date().toISOString() });
+    scrollChatToBottom();
   }
 }
 
@@ -448,10 +571,7 @@ async function loadProfilesSidebar(major) {
     return;
   }
 
-  profiles.forEach(p => {
-    const card = renderProfileCard(p);
-    list.appendChild(card);
-  });
+  profiles.forEach(p => list.appendChild(renderProfileCard(p)));
 }
 
 function renderProfileCard(profile) {
@@ -461,7 +581,15 @@ function renderProfileCard(profile) {
   const name = document.createElement('div');
   name.className = 'profile-card-name clickable-name';
   name.textContent = '🎭 ' + (profile.nickname || 'anonymous');
-  name.addEventListener('click', () => showProfileModal(profile.nickname));
+  // Sidebar already has all data — show directly without extra fetch
+  name.addEventListener('click', () => showProfileModal({
+    nickname: profile.nickname,
+    major:    profile.major,
+    gpa:      profile.gpa,
+    honors:   profile.honors,
+    schools:  profile.accepted_schools || [],
+    advice:   profile.advice
+  }));
   div.appendChild(name);
 
   const gpaRange = roundGpaRange(profile.gpa);
@@ -492,80 +620,111 @@ function roundGpaRange(gpa) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   PROFILE MODAL  (click on a name in the chat or profile sidebar)
+   USER PROFILE MODAL
 ══════════════════════════════════════════════════════════════════ */
 
-async function showProfileModal(nickname) {
-  const modal = document.getElementById('community-profile-modal');
-  if (!modal) return;
+/**
+ * openUserProfile()
+ * Fetches fresh data for a user then shows the modal.
+ * Accepts either a real userId or a display/nickname string.
+ */
+async function openUserProfile(userId, displayName) {
+  // Show loading shell immediately
+  showProfileModal({ nickname: displayName || 'Loading…', major: null, gpa: null, honors: null, schools: [], advice: null });
 
-  document.getElementById('profile-modal-nickname').textContent = '🎭 ' + (nickname || 'anonymous');
-  document.getElementById('profile-modal-major').textContent   = '';
-  document.getElementById('profile-modal-gpa').textContent     = '';
-  document.getElementById('profile-modal-honors').textContent  = '';
-  document.getElementById('profile-modal-schools').innerHTML   = '';
-  document.getElementById('profile-modal-advice').classList.add('hidden');
-  document.getElementById('profile-modal-advice').textContent  = '';
+  const client = (typeof getClient === 'function') ? getClient() : null;
+  if (!client) return;
 
-  modal.classList.remove('hidden');
+  let nickname = displayName || 'anonymous';
+  let major = null, gpa = null, honors = null, advice = null;
+  let schools = [];
 
-  // Look up student_profiles by nickname
-  let profile = null;
-  if (typeof getClient === 'function') {
-    const client = getClient();
-    if (client) {
-      try {
-        const { data } = await client
-          .from('student_profiles')
-          .select('*')
-          .eq('nickname', nickname)
-          .maybeSingle();
-        profile = data;
-      } catch (_) {}
+  try {
+    const isRealUser = userId &&
+      !String(userId).startsWith('guest_') &&
+      !String(userId).startsWith('local_') &&
+      !String(userId).startsWith('temp_');
+
+    if (isRealUser) {
+      // Resolve nickname
+      const { data: nn } = await client
+        .from('user_nicknames')
+        .select('nickname')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (nn?.nickname) nickname = nn.nickname;
+
+      // Onboarding data
+      const { data: ob } = await client
+        .from('onboarding')
+        .select('gpa, major, honors')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (ob) { gpa = ob.gpa; major = ob.major; honors = ob.honors; }
     }
-  }
 
-  if (!profile) {
-    document.getElementById('profile-modal-gpa').textContent = 'Current IVC Student — results not yet reported';
-    return;
-  }
+    // Accepted schools from outcomes — match on the real name portion of displayName
+    const lookupName = (displayName || '').split(' · ')[0].replace(/_/g, ' ').trim();
+    if (lookupName) {
+      const { data: outcomeRows } = await client
+        .from('outcomes')
+        .select('school_name, advice')
+        .eq('student_name', lookupName)
+        .eq('accepted', true);
+      if (outcomeRows?.length) {
+        schools = [...new Set(outcomeRows.map(r => r.school_name))];
+        advice  = outcomeRows.find(r => r.advice)?.advice || null;
+      }
+    }
+  } catch (_) {}
 
-  if (profile.major) {
-    const pill = document.getElementById('profile-modal-major');
-    pill.textContent = profile.major;
-    pill.style.cssText = 'display:inline-block;background:rgba(30,144,255,0.15);color:var(--accent);border-radius:99px;padding:3px 12px;font-size:0.82rem;font-weight:600;margin-bottom:8px';
-  }
-  if (profile.gpa) {
-    document.getElementById('profile-modal-gpa').textContent = 'GPA Range: ' + roundGpaRange(profile.gpa);
-  }
-  if (profile.honors) {
-    document.getElementById('profile-modal-honors').textContent = '🏅 ' + profile.honors;
-  }
+  // Re-render with fresh data
+  showProfileModal({ nickname, major, gpa, honors, schools, advice });
+}
 
-  const schoolsEl = document.getElementById('profile-modal-schools');
-  const schools = profile.accepted_schools || [];
-  if (schools.length) {
-    schools.forEach(sn => {
-      const pill = document.createElement('span');
-      const schoolData = (typeof SCHOOLS !== 'undefined') ? SCHOOLS.find(s => s.name === sn) : null;
-      pill.textContent = (schoolData ? schoolData.emoji + ' ' : '🎓 ') + sn;
-      pill.style.cssText = 'background:rgba(61,232,160,0.12);color:var(--accent3);border-radius:99px;padding:3px 12px;font-size:0.8rem;font-weight:600;border:1px solid rgba(61,232,160,0.25)';
-      schoolsEl.appendChild(pill);
-    });
-  } else {
-    schoolsEl.innerHTML = '<span style="color:var(--muted);font-size:0.85rem">Current IVC Student — results not yet reported</span>';
-  }
+/**
+ * showProfileModal()
+ * Creates a dynamic modal and appends it to body.
+ * data: { nickname, major, gpa, honors, schools[], advice }
+ */
+function showProfileModal(data) {
+  document.getElementById('dynamic-profile-modal')?.remove();
 
-  if (profile.advice) {
-    const advEl = document.getElementById('profile-modal-advice');
-    advEl.textContent = '"' + profile.advice + '"';
-    advEl.classList.remove('hidden');
-  }
+  const modal = document.createElement('div');
+  modal.id        = 'dynamic-profile-modal';
+  modal.className = 'community-profile-modal';
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+  const gpaDisplay  = data.gpa ? roundGpaRange(data.gpa) : null;
+  const schoolPills = (data.schools || []).map(sn => {
+    const sd = (typeof SCHOOLS !== 'undefined') ? SCHOOLS.find(s => s.name === sn) : null;
+    return `<span style="background:rgba(61,232,160,0.12);color:var(--accent3);border-radius:99px;padding:3px 12px;font-size:0.8rem;font-weight:600;border:1px solid rgba(61,232,160,0.25)">${sd ? sd.emoji + ' ' : '🎓 '}${_esc(sn)}</span>`;
+  }).join('');
+
+  modal.innerHTML = `
+    <div class="profile-modal-box">
+      <button class="profile-modal-close"
+        onclick="document.getElementById('dynamic-profile-modal')?.remove()">✕</button>
+      <div class="profile-modal-nickname">🎭 ${_esc(data.nickname || 'anonymous')}</div>
+      ${data.major ? `<div style="display:inline-block;background:rgba(30,144,255,0.15);color:var(--accent);border-radius:99px;padding:3px 12px;font-size:0.82rem;font-weight:600;margin-bottom:8px">${_esc(data.major)}</div>` : ''}
+      ${gpaDisplay ? `<div class="profile-modal-row">GPA Range: ${_esc(gpaDisplay)}</div>` : ''}
+      ${data.honors ? `<div class="profile-modal-row">🏅 ${_esc(data.honors)}</div>` : ''}
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+        ${schoolPills || '<span style="color:var(--muted);font-size:0.85rem">No reported acceptances yet</span>'}
+      </div>
+      ${data.advice ? `<div class="profile-modal-advice">"${_esc(data.advice)}"</div>` : ''}
+    </div>
+  `;
+
+  document.body.appendChild(modal);
 }
 
 function closeProfileModal() {
-  const modal = document.getElementById('community-profile-modal');
-  if (modal) modal.classList.add('hidden');
+  document.getElementById('dynamic-profile-modal')?.remove();
+  // Also close the static HTML modal if it exists
+  document.getElementById('community-profile-modal')?.classList.add('hidden');
 }
 
 /* ─── utilities ──────────────────────────────────────────────── */

@@ -87,6 +87,9 @@ async function submitOutcome() {
     });
   }
 
+  // Refresh Transfer Wall immediately (no page reload needed)
+  window.refreshTransferWall?.();
+
   if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Submit ✓'; }
   closeOutcomesModal();
 
