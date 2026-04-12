@@ -33,6 +33,8 @@ const AI_MAX_TOKENS = 1000;
  * @returns {Promise<string|null>}       - Text reply, or null if offline
  */
 async function callOllama(systemPrompt, userMessage, conversationHistory = [], timeoutMs = 60000) {
+  console.log('[Ollama] Attempting call to', 'http://localhost:11434/api/chat');
+
   if (!OLLAMA_ENABLED) return null;
 
   const messages = conversationHistory.length > 0
@@ -58,16 +60,14 @@ async function callOllama(systemPrompt, userMessage, conversationHistory = [], t
     });
 
     clearTimeout(timeout);
-    if (!resp.ok) throw new Error(`Ollama ${resp.status}`);
+    if (!resp.ok) throw new Error(`Ollama HTTP ${resp.status} ${resp.statusText}`);
 
     const data = await resp.json();
     const text = (data.message?.content || data.response || '').trim();
     return text || null;
 
   } catch (err) {
-    if (err.name !== 'AbortError') {
-      console.error('[callOllama] failed:', err.message);
-    }
+    console.error('[Ollama] Full error:', err);
     return null;
   }
 }

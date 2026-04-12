@@ -541,6 +541,7 @@ Rules:
 
   if (typingEl) typingEl.remove();
 
+  if (!reply) console.warn('[Ollama] Got null response, showing fallback');
   const text = reply
     || 'Ollama is offline right now. Run "OLLAMA_ORIGINS=* ollama serve" in Terminal to enable the AI coach.';
 

@@ -174,6 +174,7 @@ Be honest about their GPA vs your competitive range. Then ask one specific quest
     );
     typing.remove();
 
+    if (!reply) console.warn('[Ollama] Got null response, showing fallback');
     const text = reply || offlineMessage(schoolName);
     modal._history = [{ role: 'assistant', content: text }];
     renderChatBubble('assistant', text);
@@ -216,6 +217,7 @@ async function handleSchoolChatSend() {
   inputEl.disabled = false;
   inputEl.focus();
 
+  if (!reply) console.warn('[Ollama] Got null response, showing fallback');
   const text = reply || offlineMessage(modal._schoolName);
   modal._history.push({ role: 'assistant', content: text });
   renderChatBubble('assistant', text);
