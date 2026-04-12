@@ -100,15 +100,18 @@ async function saveOutcome(outcome) {
   const client = getClient();
   if (!client) return null;
 
-  const { data, error } = await client.from('outcomes').insert([{
+  const row = {
     student_name:  outcome.studentName,
     student_major: outcome.studentMajor,
     student_gpa:   parseFloat(outcome.studentGpa),
     school_id:     outcome.schoolId,
     school_name:   outcome.schoolName,
-    accepted:      outcome.accepted !== false, // default true
+    accepted:      outcome.accepted !== false,
     year:          outcome.year || new Date().getFullYear()
-  }]);
+  };
+  if (outcome.advice) row.advice = outcome.advice;
+
+  const { data, error } = await client.from('outcomes').insert([row]);
 
   if (error) console.error('[supabase.js] saveOutcome error:', error.message);
   return data;

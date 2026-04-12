@@ -17,6 +17,61 @@ const OLLAMA_URL     = 'http://localhost:11434';
 const AI_MODEL       = 'llama3.1';
 const AI_MAX_TOKENS = 1000;
 
+/* ══════════════════════════════════════════════════════════════════
+   callOllama()  —  single global function for ALL AI calls
+   Uses /api/chat (supports conversation history properly).
+   Returns the text response, or null if Ollama is offline.
+══════════════════════════════════════════════════════════════════ */
+
+/**
+ * callOllama(systemPrompt, userMessage, conversationHistory)
+ *
+ * @param {string}   systemPrompt        - Instructions / role definition
+ * @param {string}   userMessage         - Latest user message
+ * @param {Array}    conversationHistory - Prior messages [{role, content}]
+ * @param {number}   timeoutMs           - Default 60 000 ms
+ * @returns {Promise<string|null>}       - Text reply, or null if offline
+ */
+async function callOllama(systemPrompt, userMessage, conversationHistory = [], timeoutMs = 60000) {
+  if (!OLLAMA_ENABLED) return null;
+
+  const messages = conversationHistory.length > 0
+    ? conversationHistory
+    : [{ role: 'user', content: userMessage }];
+
+  try {
+    const controller = new AbortController();
+    const timeout    = setTimeout(() => controller.abort(), timeoutMs);
+
+    const resp = await fetch(`${OLLAMA_URL}/api/chat`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal:  controller.signal,
+      body: JSON.stringify({
+        model:  AI_MODEL,
+        stream: false,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages
+        ]
+      })
+    });
+
+    clearTimeout(timeout);
+    if (!resp.ok) throw new Error(`Ollama ${resp.status}`);
+
+    const data = await resp.json();
+    const text = (data.message?.content || data.response || '').trim();
+    return text || null;
+
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error('[callOllama] failed:', err.message);
+    }
+    return null;
+  }
+}
+
 /**
  * generateAIContent()
  * Main entry point. Returns AI-generated dashboard data or fallback.
@@ -40,52 +95,23 @@ async function generateAIContent(student, schoolsList, outcomesData = []) {
 
   if (allSchools.length === 0) return buildFallback(student, schoolsList);
 
-  const prompt     = buildPrompt(student, allSchools, outcomesData);
-  const endpoint   = `${OLLAMA_URL}/api/generate`;
-  const controller = new AbortController();
-  const timeoutId  = setTimeout(() => controller.abort(), 30000);
+  const systemPrompt = 'You are an expert college transfer counselor. Return only valid JSON, no markdown fencing, no explanation — just the raw JSON object as instructed.';
+  const userMessage  = buildPrompt(student, allSchools, outcomesData);
+
+  const rawText = await callOllama(systemPrompt, userMessage, [], 60000);
+
+  if (!rawText) {
+    console.warn('[ai.js] Ollama offline — using fallback');
+    return buildFallback(student, schoolsList);
+  }
 
   try {
-    const resp = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: AI_MODEL,
-        prompt,
-        stream: false,
-        options: {
-          num_predict: AI_MAX_TOKENS,
-          temperature: 0.4
-        }
-      })
-    });
-    clearTimeout(timeoutId);
-
-    if (!resp.ok) {
-      const errText = await resp.text().catch(() => '');
-      throw new Error(`Ollama API ${resp.status}: ${errText}`);
-    }
-
-    const data    = await resp.json();
-    const rawText = data.response ?? '';
-
     // Robustly extract the JSON block from the response
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('No JSON object found in API response');
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    return parsed;
-
+    if (!jsonMatch) throw new Error('No JSON object found in response');
+    return JSON.parse(jsonMatch[0]);
   } catch (err) {
-    clearTimeout(timeoutId);
-    if (err.name === 'AbortError') {
-      console.warn('[ai.js] Ollama timeout  -  falling back');
-      return buildFallback(student, schoolsList);
-    }
-    console.error('[ai.js] Ollama call failed  -  falling back:', err.message);
+    console.error('[ai.js] JSON parse failed — falling back:', err.message);
     return buildFallback(student, schoolsList);
   }
 }
@@ -480,4 +506,101 @@ function buildFallbackCourses(student) {
     'Foundational introductory courses in the field',
     'IGETC completion where recommended before transfer'
   ];
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   generateConfidenceScore()
+   Returns an admission-chance analysis for one school.
+   Calls callOllama(); falls back to a static estimate if offline.
+══════════════════════════════════════════════════════════════════ */
+
+async function generateConfidenceScore(school, studentObj) {
+  const s  = studentObj || {};
+  const gpa = parseFloat(s.gpa || 0);
+  const majorMinGpa = (school.majorMinGpa || {})[s.major]
+    ?? (school.majorMinGpa || {})['default']
+    ?? school.minGPA
+    ?? 3.0;
+  const tagEligible = school.tagGpa && !(school.tagExclusions || []).includes(s.major)
+    && gpa >= school.tagGpa ? 'YES' : 'NO';
+  const admitPct = school.admitRate ? Math.round(school.admitRate * 100) : 50;
+
+  const systemPrompt =
+`You are a brutally honest transfer admissions counselor. Analyze this student's real chances at this specific school for their major.
+Return ONLY valid JSON, no markdown:
+{
+  "percentage": number 0-100,
+  "verdict": "one word exactly: Excellent or Strong or Possible or Unlikely or Very Unlikely",
+  "reasoning": "2-3 sentences max. Be specific and honest. Reference their actual GPA vs the school competitive range, their major difficulty, TAG eligibility if applicable, and one specific thing they can do to improve chances. If GPA < 2.5, lead with fixing grades.",
+  "topFactor": "single biggest factor helping them (short phrase)",
+  "riskFactor": "single biggest factor hurting them (short phrase)"
+}`;
+
+  const userMessage =
+`Student: ${s.name || 'Student'}
+Major: ${s.major || 'unknown'}
+GPA: ${gpa}
+Honors: ${s.honors || 'not specified'}
+IGETC: ${s.igetc || 'not specified'}
+Extracurriculars: ${(s.extracurriculars || []).join(', ') || 'none listed'}
+Priorities: ${(s.priorities || []).join(', ') || 'none'}
+
+School: ${school.name}
+School overall admit rate: ${admitPct}%
+Major min GPA for this school: ${majorMinGpa}
+TAG eligible for this major: ${tagEligible}`;
+
+  const result = await callOllama(systemPrompt, userMessage, [], 30000);
+
+  if (result) {
+    try {
+      const clean = result.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean.match(/\{[\s\S]*\}/)?.[0] || clean);
+      return normalizeConfidence(parsed);
+    } catch (_) {}
+  }
+
+  return staticConfidenceFallback(gpa, majorMinGpa, admitPct, school.name, tagEligible === 'YES');
+}
+
+function normalizeConfidence(raw) {
+  const validVerdicts = ['excellent','strong','possible','unlikely','very unlikely'];
+  const verdict = (raw.verdict || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  return {
+    percentage: Math.min(100, Math.max(0, parseInt(raw.percentage) || 50)),
+    verdict:    validVerdicts.includes(verdict) ? verdict : 'possible',
+    reasoning:  raw.reasoning  || 'Check your GPA against the school\'s competitive range and ensure IGETC is complete.',
+    topFactor:  raw.topFactor  || 'Application completeness',
+    riskFactor: raw.riskFactor || 'Major competitiveness'
+  };
+}
+
+function staticConfidenceFallback(gpa, minGpa, admitPct, schoolName, tagEligible) {
+  const gap = gpa - minGpa;
+  let pct, verdict, reasoning;
+
+  if (tagEligible) {
+    pct = 75; verdict = 'strong';
+    reasoning = `Your GPA of ${gpa} meets the TAG threshold for this school — submit your TAG by November 1 to lock in admission. Complete IGETC before transfer to avoid GE requirements at ${schoolName}.`;
+  } else if (gap >= 0.4) {
+    pct = Math.min(70, admitPct * 1.4); verdict = 'strong';
+    reasoning = `Your GPA of ${gpa} is comfortably above the ${minGpa} minimum. Focus on a strong personal insight statement and relevant extracurriculars for ${schoolName}.`;
+  } else if (gap >= 0) {
+    pct = Math.min(55, admitPct * 1.1); verdict = 'possible';
+    reasoning = `Your GPA (${gpa}) meets the minimum (${minGpa}) but is in the competitive range. A compelling personal statement and completed IGETC will help at ${schoolName}.`;
+  } else if (gap >= -0.3) {
+    pct = Math.max(15, admitPct * 0.6); verdict = 'unlikely';
+    reasoning = `Your GPA (${gpa}) is slightly below ${schoolName}'s competitive floor of ${minGpa}. Raise it by 0.2–0.3 before applying, or target safer CSU options.`;
+  } else {
+    pct = Math.max(5, admitPct * 0.25); verdict = 'very unlikely';
+    reasoning = `Your GPA (${gpa}) is significantly below the ${minGpa} minimum for ${schoolName}. Prioritize grade improvement and consider CSU options before retrying.`;
+  }
+
+  return {
+    percentage: Math.round(pct),
+    verdict,
+    reasoning,
+    topFactor:  tagEligible ? 'TAG eligible' : gap >= 0 ? 'GPA meets minimum' : 'Strong extracurriculars can help',
+    riskFactor: gpa < 2.5 ? 'GPA below minimum — must improve first' : gap < 0 ? 'GPA below competitive range' : 'Major competitiveness'
+  };
 }

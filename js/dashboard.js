@@ -188,6 +188,8 @@ function buildRankedSchoolCard(item, rank, topLabel) {
       <button class="btn-school-chat" data-school-id="${school.id}">💬 Chat with ${school.name}</button>
     </div>
     <div class="school-card-body">
+      <!-- Confidence score — injected async below the card is built -->
+      <div class="confidence-skeleton" id="conf-${school.id}"></div>
       ${schoolAI.admission_tips ? `
         <div class="school-card-section-label">Admission Tips</div>
         <div class="school-card-tip">${schoolAI.admission_tips}</div>
@@ -211,6 +213,46 @@ function buildRankedSchoolCard(item, rank, topLabel) {
     chatBtn.addEventListener('click', () => {
       if (typeof openSchoolChat === 'function') openSchoolChat(item);
     });
+  }
+
+  // Async confidence score injection (non-blocking)
+  if (typeof generateConfidenceScore === 'function') {
+    generateConfidenceScore(school, student).then(conf => {
+      const skeleton = card.querySelector(`#conf-${school.id}`);
+      if (!skeleton || !conf) { if (skeleton) skeleton.remove(); return; }
+      const verdictClass = (conf.verdict || 'possible').toLowerCase().replace(/\s+/g, '-');
+      const pct = Math.min(100, Math.max(0, conf.percentage || 0));
+      const fillColor = pct >= 60 ? 'var(--accent3)' : pct >= 35 ? 'var(--gold)' : 'var(--accent2)';
+      const block = document.createElement('div');
+      block.className = 'confidence-block';
+      block.innerHTML = `
+        <div class="confidence-header">
+          <span class="confidence-label">Your Chances</span>
+          <span class="confidence-verdict ${verdictClass}">${conf.verdict || 'Possible'}</span>
+        </div>
+        <div class="confidence-bar-wrap">
+          <div class="confidence-bar-fill" style="width:0%;background:${fillColor}"></div>
+        </div>
+        <div class="confidence-percentage">${pct}%</div>
+        <div class="confidence-reasoning">${escapeHtmlD(conf.reasoning || '')}</div>
+        <div class="confidence-factors">
+          <span class="factor-good">✓ ${escapeHtmlD(conf.topFactor || '')}</span>
+          <span class="factor-risk">✗ ${escapeHtmlD(conf.riskFactor || '')}</span>
+        </div>
+      `;
+      skeleton.replaceWith(block);
+      // Animate bar after paint
+      requestAnimationFrame(() => {
+        const fill = block.querySelector('.confidence-bar-fill');
+        if (fill) fill.style.width = pct + '%';
+      });
+    }).catch(() => {
+      const skeleton = card.querySelector(`#conf-${school.id}`);
+      if (skeleton) skeleton.remove();
+    });
+  } else {
+    const skeleton = card.querySelector(`#conf-${school.id}`);
+    if (skeleton) skeleton.remove();
   }
 
   // Async social proof badge (non-blocking)

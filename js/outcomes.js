@@ -1,14 +1,10 @@
 /**
  * outcomes.js
- * Outcomes modal and realtime Supabase feed for Laser2Uni.
- * Owner: UI person
+ * Outcomes modal + realtime feed for Laser2Uni.
  *
- * Depends on: state.js, supabase.js
+ * NOTE: Run this in Supabase SQL Editor before deploying:
+ *   ALTER TABLE outcomes ADD COLUMN IF NOT EXISTS advice text;
  */
-
-/* ══════════════════════════════════════════════════════════════════
-   OUTCOMES — Report Your Acceptance (Demo Feature)
-══════════════════════════════════════════════════════════════════ */
 
 function addOutcomesFAB() {
   const existing = document.getElementById('outcomes-fab-btn');
@@ -34,7 +30,6 @@ function openOutcomesModal() {
   populateOutcomeSchoolSelect();
   document.getElementById('outcomes-modal')?.classList.remove('hidden');
 
-  // Pre-fill with current student data if available
   const nameEl  = document.getElementById('outcome-name');
   const majorEl = document.getElementById('outcome-major');
   const gpaEl   = document.getElementById('outcome-gpa');
@@ -45,14 +40,17 @@ function openOutcomesModal() {
 
 function closeOutcomesModal() {
   document.getElementById('outcomes-modal')?.classList.add('hidden');
+  // Clear advice field on close
+  const advEl = document.getElementById('outcome-advice');
+  if (advEl) advEl.value = '';
 }
 
 async function submitOutcome() {
-  const name  = document.getElementById('outcome-name')?.value.trim();
-  const major = document.getElementById('outcome-major')?.value.trim();
-  const gpa   = parseFloat(document.getElementById('outcome-gpa')?.value);
+  const name   = document.getElementById('outcome-name')?.value.trim();
+  const major  = document.getElementById('outcome-major')?.value.trim();
+  const gpa    = parseFloat(document.getElementById('outcome-gpa')?.value);
+  const advice = (document.getElementById('outcome-advice')?.value || '').trim();
 
-  // Collect all checked school checkboxes
   const checkedBoxes = Array.from(
     document.querySelectorAll('#outcome-school-list input[name="outcome-school"]:checked')
   );
@@ -84,7 +82,8 @@ async function submitOutcome() {
       schoolId,
       schoolName,
       accepted: true,
-      year
+      year,
+      advice: advice || null
     });
   }
 
@@ -92,20 +91,27 @@ async function submitOutcome() {
   closeOutcomesModal();
 
   const schoolList = schoolNames.join(', ');
-  showToast(`🎉 Congrats ${name}! Acceptances to ${schoolList} have been recorded!`, 5000);
+  showToast(`🎉 Congrats ${name}! Acceptances to ${schoolList} recorded!`, 5000);
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   REALTIME OUTCOMES FEED (Supabase)
+   REALTIME FEED — updates Community tab badge instead of toast
 ══════════════════════════════════════════════════════════════════ */
 
 function startRealtimeFeed() {
   subscribeToOutcomes(row => {
-    if (row.accepted) {
-      showToast(
-        `🔴 Live: ${row.student_name} from IVC just reported getting into ${row.school_name}!`,
-        6000
-      );
+    if (!row.accepted) return;
+
+    // Badge on Community tab
+    const tabBtn = document.querySelector('[data-tab="community"]');
+    if (tabBtn) {
+      let badge = tabBtn.querySelector('.tab-badge');
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'tab-badge';
+        tabBtn.appendChild(badge);
+      }
+      badge.textContent = (parseInt(badge.textContent) || 0) + 1;
     }
   });
 }

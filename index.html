@@ -325,6 +325,9 @@
       <div id="outcome-school-list" class="school-checkbox-list">
         <!-- Checkboxes injected by outcomes.js when modal opens -->
       </div>
+      <label class="field-label" style="margin-top:12px">Any advice for future IVC students? <span class="muted-hint">(optional)</span></label>
+      <textarea id="outcome-advice" class="text-area" rows="2"
+        placeholder="e.g. Complete IGETC early, apply for TAG if you qualify…"></textarea>
       <div class="modal-actions">
         <button class="btn-ghost" id="btn-modal-cancel">Cancel</button>
         <button class="btn-primary" id="btn-modal-submit">Submit ✓</button>
@@ -399,6 +402,21 @@
         <button class="btn-ghost" id="btn-update-cancel">Cancel</button>
         <button class="btn-primary" id="btn-update-save">↺ Re-run my matches</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       COMMUNITY PROFILE MODAL
+  ═══════════════════════════════════════════ -->
+  <div id="community-profile-modal" class="community-profile-modal hidden" onclick="if(event.target===this)closeProfileModal()">
+    <div class="profile-modal-box">
+      <button class="profile-modal-close" id="btn-profile-modal-close" onclick="closeProfileModal()">✕</button>
+      <div class="profile-modal-nickname" id="profile-modal-nickname">🎭 swift_hawk</div>
+      <div id="profile-modal-major"></div>
+      <div class="profile-modal-row" id="profile-modal-gpa"></div>
+      <div class="profile-modal-row" id="profile-modal-honors"></div>
+      <div id="profile-modal-schools" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px"></div>
+      <div class="profile-modal-advice hidden" id="profile-modal-advice"></div>
     </div>
   </div>
 

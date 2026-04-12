@@ -1,10 +1,9 @@
 /**
  * match.js
- * Tinder-style "You Matched!" overlay animation + school chat modal.
- * Triggered from dashboard.js after the Balanced tab renders.
+ * "You Matched!" overlay + school chat modal.
+ * All AI via callOllama() (defined in ai.js).
  */
 
-/** Short labels for the match card */
 const SCHOOL_SHORT_LABELS = {
   uci: 'UCI', ucb: 'Berkeley', ucla: 'UCLA', ucsd: 'UCSD', ucsb: 'UCSB',
   ucd: 'UC Davis', ucsc: 'UCSC', ucr: 'UCR', ucm: 'UC Merced',
@@ -12,90 +11,67 @@ const SCHOOL_SHORT_LABELS = {
   sdsu: 'SDSU', sjsu: 'SJSU', usc: 'USC', lmu: 'LMU', oc: 'Occidental', chapman: 'Chapman'
 };
 
-/** School "personalities" used as the system prompt when chatting */
 const SCHOOL_PERSONALITIES = {
-  uci: {
-    vibe: 'warm, supportive, community-first, loves transfer students',
-    highlights: 'Zot! Honors-to-Honors pathway, top CS + Biology, anteater pride, beach-close Irvine campus'
-  },
-  ucla: {
-    vibe: 'prestigious but friendly, LA energy, high-achieving and proud of it',
-    highlights: 'world-class research, Hollywood proximity, Bruin network, competitive transfer admissions'
-  },
-  ucb: {
-    vibe: 'intellectually intense, activist-minded, rigorous, free-thinking',
-    highlights: 'top-ranked CS/engineering, rigorous academics, Bay Area tech access, Nobel laureates'
-  },
-  ucsd: {
-    vibe: 'laid-back STEM powerhouse, ocean-view campus, research-heavy',
-    highlights: 'strong CS/Bio, La Jolla beaches, college system, biotech industry access'
-  },
-  ucsb: {
-    vibe: 'beachy, happy, quietly excellent at research',
-    highlights: 'coastal campus, strong physics/engineering, Gauchos, relaxed vibe'
-  },
-  ucd: {
-    vibe: 'friendly farm-town energy, health-sciences oriented',
-    highlights: 'strong pre-med/pre-vet, bike-friendly, collaborative culture'
-  },
-  ucsc: {
-    vibe: 'redwood-forest chill, creative, slightly quirky',
-    highlights: 'forest campus, strong CS and marine biology, laid-back learning'
-  },
-  ucr: {
-    vibe: 'welcoming, diverse, accessible UC',
-    highlights: 'high admit rate for transfers, great financial aid, engineering growing fast'
-  },
-  ucm: {
-    vibe: 'newest UC, underdog energy, tight-knit',
-    highlights: 'easier transfer path, small-UC feel, growing research portfolio'
-  },
-  csuf: {
-    vibe: 'practical, career-focused, commuter-friendly',
-    highlights: 'strong business/accounting, huge transfer pipeline, Orange County location'
-  },
-  csulb: {
-    vibe: 'coastal CSU, diverse, well-known for nursing and engineering',
-    highlights: 'Long Beach location, nursing program, affordable, strong alumni network'
-  },
-  cpslo: {
-    vibe: 'hands-on Learn by Doing, polytechnic pride',
-    highlights: 'engineering powerhouse, project-based, selective admissions'
-  },
-  cpp: {
-    vibe: 'polytechnic, career-focused, SoCal commuter',
-    highlights: 'engineering and agriculture, project-based, affordable CSU'
-  },
-  sdsu: {
-    vibe: 'spirited, business-heavy, San Diego life',
-    highlights: 'strong business programs, Aztec pride, beach proximity'
-  },
-  sjsu: {
-    vibe: 'tech-adjacent, practical, Silicon Valley connected',
-    highlights: 'CS pipeline into Bay Area tech, huge transfer acceptance, career-focused'
-  },
-  usc: {
-    vibe: 'Trojan-family proud, private, networking-obsessed',
-    highlights: 'huge alumni network, film/business/CS excellence, LA campus, high cost'
-  },
-  lmu: {
-    vibe: 'small-private warmth, Jesuit values, LA-based',
-    highlights: 'small classes, strong film/business, bluff campus overlooking LA'
-  },
-  oc: {
-    vibe: 'small liberal-arts intensity, discussion-heavy',
-    highlights: 'tiny classes, close faculty, strong in politics/economics'
-  },
-  chapman: {
-    vibe: 'creative private, film-heavy, boutique',
-    highlights: 'top film school, small-class vibe, Orange County campus'
-  }
+  uci:     'Warm, locally connected, research-focused, proud of the IVC-to-UCI pipeline. Knows IVC students well. Zot!',
+  ucla:    'Prestigious, exciting, slightly selective-sounding. Passionate about campus life and research. Fight On!',
+  ucb:     'Intellectual, rigorous, socially conscious, loves ambitious students. Go Bears!',
+  ucsd:    'Research-heavy, collaborative, mentions the beach and the La Jolla biotech scene.',
+  ucsb:    'Laid-back but serious about academics, beautiful campus proud, strong transfer culture. Go Gauchos!',
+  ucd:     'Friendly farm-town energy, health-sciences and agriculture oriented, very accessible, collaborative.',
+  ucsc:    'Chill redwood-forest energy, creative and quirky, strong in CS and marine biology.',
+  ucr:     'Welcoming, accessible, genuinely excited to have transfer students, emphasizes support resources.',
+  ucm:     "Newest UC, underdog energy, tight-knit community, easier transfer path.",
+  csuf:    'Career-focused, practical, commuter-friendly, strong business and accounting, Orange County hub.',
+  csulb:   'Coastal CSU vibes, diverse, well-known for nursing and engineering, affordable.',
+  cpslo:   'Polytechnic pride, Learn by Doing ethos, project-based, selective but worth it.',
+  cpp:     'Polytechnic, career-focused, SoCal commuter, engineering and agriculture strength.',
+  sdsu:    'Spirited, business-heavy, San Diego beach life, Aztec pride.',
+  sjsu:    'Silicon Valley adjacent, practical, CS pipeline into Bay Area tech, very transfer-friendly.',
+  usc:     'Trojan-family network-obsessed, ambitious, LA energy, mentions the Trojan network constantly.',
+  lmu:     'Personal, tight-knit, Jesuit values, bluff campus with LA views, strong film and business.',
+  oc:      'Small liberal-arts intensity, discussion-heavy, tiny classes, close faculty-student relationships.',
+  chapman: 'Creative private, top film school, boutique Orange County campus, small-community feel.'
 };
 
 /**
+ * buildSchoolSystemPrompt()
+ * Builds the system prompt for the school's chatbot persona using real student data.
+ */
+function buildSchoolSystemPrompt(schoolId, schoolName, schoolItem) {
+  const personality = SCHOOL_PERSONALITIES[schoolId] || 'Friendly and welcoming university.';
+  const s = (typeof student !== 'undefined' && student) ? student : {};
+  const scoreVal = schoolItem && schoolItem.score ? schoolItem.score : '?';
+  const gpa = parseFloat(s.gpa || 0);
+  const majorMinGpa = (schoolItem && schoolItem.school)
+    ? ((schoolItem.school.majorMinGpa || {})[s.major] ?? (schoolItem.school.majorMinGpa || {})['default'] ?? schoolItem.school.minGPA ?? 3.0)
+    : 3.0;
+
+  return `You are ${schoolName}, a university speaking directly and personally to ${s.name || 'a student'}, a transfer applicant from Irvine Valley College (IVC).
+
+Your university's personality: ${personality}
+
+The student's profile:
+- Name: ${s.name || 'not given'}
+- Major: ${s.major || 'undecided'}
+- GPA: ${gpa} (your competitive minimum for this major: ${majorMinGpa})
+- Honors status: ${s.honors || 'not specified'}
+- IGETC status: ${s.igetc || 'not specified'}
+- Extracurriculars: ${(s.extracurriculars || []).join(', ') || 'none listed'}
+- Career goals: ${s.career || 'not specified'}
+- Priorities: ${(s.priorities || []).join(', ') || 'not specified'}
+- Fit score with you: ${scoreVal}/100
+
+RULES:
+- Speak in first-person as the university, not as an AI.
+- Be honest: if the student's GPA is below your competitive range, acknowledge it warmly but truthfully.
+- Reference the student's actual data (name, major, GPA, honors) naturally in your replies.
+- Keep replies to 3-5 sentences max.
+- Do NOT say "as an AI" or "I'm a language model."
+- Do NOT use markdown, bullet points, or emojis.`;
+}
+
+/**
  * showMatchAnimation()
- * Shows the "You Matched!" overlay for the given school.
- * Timed animations: cards at 200ms, text at 1000ms, button at 1500ms.
  */
 function showMatchAnimation(schoolItem, onStartChat) {
   const overlay = document.getElementById('match-overlay');
@@ -112,12 +88,11 @@ function showMatchAnimation(schoolItem, onStartChat) {
   const studentName = (typeof student !== 'undefined' && student && student.name) ? student.name : 'You';
   document.getElementById('match-you-name').textContent = studentName;
 
-  // Reset animation state by re-triggering
   overlay.classList.remove('hidden');
+
   const chatBtn = document.getElementById('btn-match-chat');
   chatBtn.classList.remove('hidden');
 
-  // Wire up buttons (replace listeners by cloning)
   const newBtn = chatBtn.cloneNode(true);
   chatBtn.parentNode.replaceChild(newBtn, chatBtn);
   newBtn.addEventListener('click', () => {
@@ -129,14 +104,12 @@ function showMatchAnimation(schoolItem, onStartChat) {
   const skipBtn = document.getElementById('btn-match-skip');
   const newSkip = skipBtn.cloneNode(true);
   skipBtn.parentNode.replaceChild(newSkip, skipBtn);
-  newSkip.addEventListener('click', () => {
-    overlay.classList.add('hidden');
-  });
+  newSkip.addEventListener('click', () => overlay.classList.add('hidden'));
 }
 
 /**
  * openSchoolChat()
- * Opens the school chat modal, loads existing conversation, or sends opening message.
+ * Opens the modal, loads saved history or fires the opening AI message.
  */
 async function openSchoolChat(schoolItem) {
   const modal = document.getElementById('school-chat-modal');
@@ -151,43 +124,64 @@ async function openSchoolChat(schoolItem) {
 
   const messagesEl = document.getElementById('school-chat-messages');
   messagesEl.innerHTML = '';
-
   modal.classList.remove('hidden');
 
-  // State: messages live on the modal element
-  modal._schoolId   = schoolId;
-  modal._schoolName = schoolName;
-  modal._messages   = [];
+  // Per-modal state
+  modal._schoolId       = schoolId;
+  modal._schoolName     = schoolName;
+  modal._schoolItem     = schoolItem;
+  modal._systemPrompt   = buildSchoolSystemPrompt(schoolId, schoolName, schoolItem);
+  modal._history        = [];   // [{role:'user'|'assistant', content}]
 
-  // Close button
-  const closeBtn = document.getElementById('btn-school-chat-close');
-  closeBtn.onclick = closeSchoolChat;
+  // Wire close
+  document.getElementById('btn-school-chat-close').onclick = closeSchoolChat;
 
-  // Send button + enter key
-  const sendBtn  = document.getElementById('btn-school-chat-send');
-  const inputEl  = document.getElementById('school-chat-input');
-  sendBtn.onclick = () => handleSchoolChatSend();
+  // Wire send (replace to avoid double-binding)
+  const sendBtn = document.getElementById('btn-school-chat-send');
+  const inputEl = document.getElementById('school-chat-input');
+  const newSend = sendBtn.cloneNode(true);
+  sendBtn.parentNode.replaceChild(newSend, sendBtn);
+  newSend.addEventListener('click', () => handleSchoolChatSend());
   inputEl.onkeydown = (e) => { if (e.key === 'Enter') handleSchoolChatSend(); };
   inputEl.value = '';
-  inputEl.focus();
 
-  // Load existing conversation or generate opener
+  // Load saved conversation or fire opening message
   let existing = null;
   if (typeof getSchoolChat === 'function' && typeof currentUserId !== 'undefined' && currentUserId) {
     existing = await getSchoolChat(currentUserId, schoolId);
   }
 
   if (existing && Array.isArray(existing.messages) && existing.messages.length > 0) {
-    modal._messages = existing.messages.slice();
-    modal._messages.forEach(renderChatMessage);
+    // Restore history: saved messages are [{role, content}]
+    modal._history = existing.messages.slice();
+    modal._history.forEach(m => renderChatBubble(m.role, m.content));
     scrollChatToBottom();
   } else {
-    // Send opening AI message
-    const typingEl = appendTypingIndicator();
-    const opener = await generateSchoolOpeningMessage(schoolItem);
-    typingEl.remove();
-    pushSchoolMessage('school', opener);
+    // First open — fire opening message from school
+    const typing = appendTypingDots();
+    const s = (typeof student !== 'undefined' && student) ? student : {};
+    const openingUserMsg = 'Hello';
+    modal._history.push({ role: 'user', content: openingUserMsg });
+
+    const reply = await callOllama(
+      modal._systemPrompt,
+      // Special opener instruction injected as user turn
+      `Start your message with exactly: "You matched with me because..."
+Then explain specifically using the student's actual data: their GPA ${s.gpa}, their major ${s.major}, their honors status (${s.honors || 'none'}), their priorities (${(s.priorities || []).join(', ') || 'none listed'}), and their extracurriculars (${(s.extracurriculars || []).join(', ') || 'none listed'}).
+Be honest about their GPA vs your competitive range. Then ask one specific question about what they want to know.`,
+      [],
+      60000
+    );
+    typing.remove();
+
+    const text = reply || offlineMessage(schoolName);
+    modal._history = [{ role: 'assistant', content: text }];
+    renderChatBubble('assistant', text);
+    scrollChatToBottom();
+    persistSchoolChat(modal);
   }
+
+  inputEl.focus();
 }
 
 function closeSchoolChat() {
@@ -199,128 +193,68 @@ async function handleSchoolChatSend() {
   const modal   = document.getElementById('school-chat-modal');
   const inputEl = document.getElementById('school-chat-input');
   if (!modal || !inputEl) return;
+
   const content = (inputEl.value || '').trim();
   if (!content) return;
   inputEl.value = '';
+  inputEl.disabled = true;
 
-  pushSchoolMessage('user', content);
-
-  const typingEl = appendTypingIndicator();
-  const reply = await generateSchoolReply(modal._schoolId, modal._schoolName, modal._messages);
-  typingEl.remove();
-  pushSchoolMessage('school', reply);
-}
-
-function pushSchoolMessage(role, content) {
-  const modal = document.getElementById('school-chat-modal');
-  if (!modal) return;
-  const msg = { role, content, at: Date.now() };
-  modal._messages.push(msg);
-  renderChatMessage(msg);
+  // Add user message to history + render
+  modal._history.push({ role: 'user', content });
+  renderChatBubble('user', content);
   scrollChatToBottom();
 
-  // Persist (fire-and-forget)
-  if (typeof saveSchoolChat === 'function' && typeof currentUserId !== 'undefined' && currentUserId) {
-    saveSchoolChat(currentUserId, modal._schoolId, modal._schoolName, modal._messages);
-  }
+  const typing = appendTypingDots();
+
+  const reply = await callOllama(
+    modal._systemPrompt,
+    content,
+    modal._history.slice(-12),   // keep last 12 turns for context
+    60000
+  );
+  typing.remove();
+  inputEl.disabled = false;
+  inputEl.focus();
+
+  const text = reply || offlineMessage(modal._schoolName);
+  modal._history.push({ role: 'assistant', content: text });
+  renderChatBubble('assistant', text);
+  scrollChatToBottom();
+  persistSchoolChat(modal);
 }
 
-function renderChatMessage(msg) {
+/* ─── helpers ────────────────────────────────────────────────── */
+
+function renderChatBubble(role, content) {
   const messagesEl = document.getElementById('school-chat-messages');
   if (!messagesEl) return;
   const div = document.createElement('div');
-  div.className = 'chat-msg ' + (msg.role === 'user' ? 'chat-msg-user' : 'chat-msg-school');
-  div.textContent = msg.content;
+  div.className = role === 'user' ? 'chat-msg chat-msg-user' : 'chat-msg chat-msg-school';
+  div.textContent = content;
   messagesEl.appendChild(div);
 }
 
-function appendTypingIndicator() {
+function appendTypingDots() {
   const messagesEl = document.getElementById('school-chat-messages');
   const el = document.createElement('div');
-  el.className = 'chat-msg chat-msg-typing';
-  el.textContent = 'typing…';
+  el.className = 'chat-msg chat-msg-school chat-msg-typing';
+  el.innerHTML = '<span class="typing-dots"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>';
   messagesEl.appendChild(el);
   scrollChatToBottom();
   return el;
 }
 
 function scrollChatToBottom() {
-  const messagesEl = document.getElementById('school-chat-messages');
-  if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
+  const el = document.getElementById('school-chat-messages');
+  if (el) el.scrollTop = el.scrollHeight;
 }
 
-/**
- * generateSchoolOpeningMessage()
- * Uses Ollama to produce a short first message in the school's voice.
- * Falls back to a static opener if Ollama is offline.
- */
-async function generateSchoolOpeningMessage(schoolItem) {
-  const schoolName = schoolItem.school ? schoolItem.school.name : schoolItem.name;
-  const schoolId   = schoolItem.school ? schoolItem.school.id   : schoolItem.id;
-  const personality = SCHOOL_PERSONALITIES[schoolId] || { vibe: 'friendly and welcoming', highlights: 'strong academics' };
-
-  const studentName = (typeof student !== 'undefined' && student && student.name) ? student.name : 'there';
-  const studentMajor = (typeof student !== 'undefined' && student && student.major) ? student.major : 'your major';
-
-  const prompt =
-`You are speaking AS the university "${schoolName}" to a prospective transfer student named ${studentName} (intended major: ${studentMajor}).
-Your personality: ${personality.vibe}.
-Your highlights: ${personality.highlights}.
-
-Write one SHORT opening message (2-3 sentences max) greeting them warmly, mentioning one thing that makes your school great for ${studentMajor}, and inviting them to ask questions. Speak in first-person as the school. No hashtags. No emojis. No markdown.`;
-
-  try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 20000);
-    const res = await fetch('http://localhost:11434/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'llama3.1', prompt, stream: false }),
-      signal: ctrl.signal
-    });
-    clearTimeout(t);
-    if (!res.ok) throw new Error('ollama');
-    const data = await res.json();
-    const text = (data.response || '').trim();
-    if (text) return text;
-  } catch (_) {}
-
-  // Fallback
-  return `Hey ${studentName}! I'm ${schoolName}, and I'd love to have a ${studentMajor} student like you. Ask me anything about transferring here.`;
+function persistSchoolChat(modal) {
+  if (typeof saveSchoolChat !== 'function') return;
+  if (typeof currentUserId === 'undefined' || !currentUserId) return;
+  saveSchoolChat(currentUserId, modal._schoolId, modal._schoolName, modal._history);
 }
 
-/**
- * generateSchoolReply()
- * Continuation replies using the same school personality + running transcript.
- */
-async function generateSchoolReply(schoolId, schoolName, history) {
-  const personality = SCHOOL_PERSONALITIES[schoolId] || { vibe: 'friendly', highlights: 'strong academics' };
-  const transcript = history.slice(-10).map(m => (m.role === 'user' ? 'Student: ' : 'School: ') + m.content).join('\n');
-
-  const prompt =
-`You are "${schoolName}" speaking directly to a prospective transfer student.
-Personality: ${personality.vibe}. Highlights: ${personality.highlights}.
-
-Recent transcript:
-${transcript}
-
-Reply in 2-4 sentences as the school, in first-person, warm and specific. Do not say "as an AI". No markdown.`;
-
-  try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 20000);
-    const res = await fetch('http://localhost:11434/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'llama3.1', prompt, stream: false }),
-      signal: ctrl.signal
-    });
-    clearTimeout(t);
-    if (!res.ok) throw new Error('ollama');
-    const data = await res.json();
-    const text = (data.response || '').trim();
-    if (text) return text;
-  } catch (_) {}
-
-  return `Great question! Honestly, transfer students thrive here — we'd love to support you through the application. What part of the process feels most uncertain right now?`;
+function offlineMessage(schoolName) {
+  return `Ollama is offline right now. Run "OLLAMA_ORIGINS=* ollama serve" in Terminal to enable AI chat with ${schoolName}.`;
 }
