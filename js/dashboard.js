@@ -215,45 +215,7 @@ function buildRankedSchoolCard(item, rank, topLabel) {
     });
   }
 
-  // Async confidence score injection (non-blocking)
-  if (typeof generateConfidenceScore === 'function') {
-    generateConfidenceScore(school, student).then(conf => {
-      const skeleton = card.querySelector(`#conf-${school.id}`);
-      if (!skeleton || !conf) { if (skeleton) skeleton.remove(); return; }
-      const verdictClass = (conf.verdict || 'possible').toLowerCase().replace(/\s+/g, '-');
-      const pct = Math.min(100, Math.max(0, conf.percentage || 0));
-      const fillColor = pct >= 60 ? 'var(--accent3)' : pct >= 35 ? 'var(--gold)' : 'var(--accent2)';
-      const block = document.createElement('div');
-      block.className = 'confidence-block';
-      block.innerHTML = `
-        <div class="confidence-header">
-          <span class="confidence-label">Your Chances</span>
-          <span class="confidence-verdict ${verdictClass}">${conf.verdict || 'Possible'}</span>
-        </div>
-        <div class="confidence-bar-wrap">
-          <div class="confidence-bar-fill" style="width:0%;background:${fillColor}"></div>
-        </div>
-        <div class="confidence-percentage">${pct}%</div>
-        <div class="confidence-reasoning">${escapeHtmlD(conf.reasoning || '')}</div>
-        <div class="confidence-factors">
-          <span class="factor-good">✓ ${escapeHtmlD(conf.topFactor || '')}</span>
-          <span class="factor-risk">✗ ${escapeHtmlD(conf.riskFactor || '')}</span>
-        </div>
-      `;
-      skeleton.replaceWith(block);
-      // Animate bar after paint
-      requestAnimationFrame(() => {
-        const fill = block.querySelector('.confidence-bar-fill');
-        if (fill) fill.style.width = pct + '%';
-      });
-    }).catch(() => {
-      const skeleton = card.querySelector(`#conf-${school.id}`);
-      if (skeleton) skeleton.remove();
-    });
-  } else {
-    const skeleton = card.querySelector(`#conf-${school.id}`);
-    if (skeleton) skeleton.remove();
-  }
+  // Confidence score injected later by loadConfidenceScoresSequentially()
 
   // Async social proof badge (non-blocking)
   getSimilarStudentOutcomes(studentGpa, school.id).then(outcomes => {
@@ -310,15 +272,21 @@ function renderBalancedTab() {
     return;
   }
 
+  const balancedCards = [];
   balancedList.forEach((item, i) => {
     const label = i === 0 ? 'Top Pick' : null;
-    pane.appendChild(buildRankedSchoolCard(item, i + 1, label));
+    const card = buildRankedSchoolCard(item, i + 1, label);
+    pane.appendChild(card);
+    balancedCards.push(card);
   });
 
   renderPassedSection(pane);
 
   // Life-plan content (moved from the old "Your Path" tab)
   renderLifePlanSection(pane);
+
+  // Load confidence scores one at a time after cards are rendered
+  loadConfidenceScoresSequentially(balancedList, balancedCards);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -419,6 +387,73 @@ function escapeHtmlD(s) {
     .replace(/>/g, '&gt;');
 }
 
+/**
+ * injectConfidenceScore(card, conf)
+ * Replaces the confidence skeleton inside a card element with the real block.
+ */
+function injectConfidenceScore(card, conf) {
+  if (!card || !conf) {
+    const sk = card?.querySelector('.confidence-skeleton');
+    if (sk) sk.remove();
+    return;
+  }
+  const skeleton = card.querySelector('.confidence-skeleton');
+  if (!skeleton) return;
+
+  const verdictRaw = (conf.verdict || 'possible');
+  const verdictClass = verdictRaw.toLowerCase().replace(/\s+/g, '-');
+  const verdictDisplay = verdictRaw.replace(/\b\w/g, c => c.toUpperCase());
+  const pct = Math.min(100, Math.max(0, conf.percentage || 0));
+  const fillColor = pct >= 60 ? 'var(--accent3)' : pct >= 35 ? 'var(--gold)' : 'var(--accent2)';
+
+  const block = document.createElement('div');
+  block.className = 'confidence-block';
+  block.innerHTML = `
+    <div class="confidence-header">
+      <span class="confidence-label">Your Chances</span>
+      <span class="confidence-verdict ${verdictClass}">${verdictDisplay}</span>
+    </div>
+    <div class="confidence-bar-wrap">
+      <div class="confidence-bar-fill" style="width:0%;background:${fillColor}"></div>
+    </div>
+    <div class="confidence-percentage">${pct}%</div>
+    <div class="confidence-reasoning">${escapeHtmlD(conf.reasoning || '')}</div>
+    <div class="confidence-factors">
+      <span class="factor-good">✓ ${escapeHtmlD(conf.topFactor || '')}</span>
+      <span class="factor-risk">✗ ${escapeHtmlD(conf.riskFactor || '')}</span>
+    </div>
+  `;
+  skeleton.replaceWith(block);
+  requestAnimationFrame(() => {
+    const fill = block.querySelector('.confidence-bar-fill');
+    if (fill) fill.style.width = pct + '%';
+  });
+}
+
+/**
+ * loadConfidenceScoresSequentially(schoolItems, cardElements)
+ * Fires one Ollama call every 300 ms, avoiding simultaneous requests.
+ */
+async function loadConfidenceScoresSequentially(schoolItems, cardElements) {
+  if (typeof generateConfidenceScore !== 'function') return;
+  for (let i = 0; i < schoolItems.length; i++) {
+    await new Promise(r => setTimeout(r, 300));
+    try {
+      const conf = await generateConfidenceScore(schoolItems[i].school, student);
+      if (conf && cardElements[i]) injectConfidenceScore(cardElements[i], conf);
+      else if (cardElements[i]) {
+        const sk = cardElements[i].querySelector('.confidence-skeleton');
+        if (sk) sk.remove();
+      }
+    } catch (_) {
+      if (cardElements[i]) {
+        const sk = cardElements[i].querySelector('.confidence-skeleton');
+        if (sk) sk.remove();
+      }
+    }
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════════
    FIT TAB (best for you)
 ══════════════════════════════════════════════════════════════════ */
@@ -442,10 +477,15 @@ function renderFitTab() {
     return;
   }
 
+  const fitCards = [];
   fitList.forEach((item, i) => {
     const label = i === 0 ? 'Best Match' : null;
-    pane.appendChild(buildRankedSchoolCard(item, i + 1, label));
+    const card = buildRankedSchoolCard(item, i + 1, label);
+    pane.appendChild(card);
+    fitCards.push(card);
   });
+
+  loadConfidenceScoresSequentially(fitList, fitCards);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -470,10 +510,15 @@ function renderRankingsTab() {
     return;
   }
 
+  const prestigeCards = [];
   prestigeList.forEach((item, i) => {
     const label = i === 0 ? 'Most Prestigious' : null;
-    pane.appendChild(buildRankedSchoolCard(item, i + 1, label));
+    const card = buildRankedSchoolCard(item, i + 1, label);
+    pane.appendChild(card);
+    prestigeCards.push(card);
   });
+
+  loadConfidenceScoresSequentially(prestigeList, prestigeCards);
 }
 
 /* ══════════════════════════════════════════════════════════════════

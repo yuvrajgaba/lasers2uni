@@ -117,6 +117,18 @@ async function renderCommunityTab(pane) {
   };
   inputEl.onkeydown = e => { if (e.key === 'Enter') document.getElementById('community-chat-send')?.click(); };
 
+  // Subtle guest prompt at top of community pane
+  const isGuest = typeof currentUserId !== 'undefined' && currentUserId &&
+    String(currentUserId).startsWith('guest_');
+  if (isGuest) {
+    const guestBanner = document.createElement('div');
+    guestBanner.style.cssText =
+      'background:rgba(30,144,255,0.08);border:1px solid rgba(30,144,255,0.2);' +
+      'border-radius:var(--radius-sm);padding:8px 14px;font-size:0.82rem;color:var(--muted);margin-bottom:8px;text-align:center';
+    guestBanner.textContent = 'Create an account to save your progress and chat history.';
+    pane.insertBefore(guestBanner, pane.firstChild);
+  }
+
   loadTransferWall();
   await loadChatForMajor(major);
   loadProfilesSidebar(major);
@@ -147,7 +159,7 @@ async function loadTransferWall() {
   feed.innerHTML = '';
 
   if (!accepted.length) {
-    feed.innerHTML = '<div class="community-msg"><div class="community-msg-body muted">No acceptances reported yet — be the first! Click "🎉 Report Your Acceptance".</div></div>';
+    feed.innerHTML = '<div class="community-msg"><div class="community-msg-body muted">Be the first IVC student to report an acceptance! 🎓 Click "🎉 Report Your Acceptance" above.</div></div>';
   } else {
     // Group by student_name
     const byStudent = {};
@@ -221,9 +233,7 @@ async function loadTransferWall() {
           }
         }
       )
-      .subscribe(status => {
-        if (status === 'SUBSCRIBED') console.info('[community.js] Wall realtime subscribed.');
-      });
+      .subscribe();
   }
 }
 
@@ -537,7 +547,7 @@ Rules:
 - Be conversational, like a knowledgeable older student who went through this.
 - Do NOT say "as an AI." Do NOT use markdown or bullet points.`;
 
-  const reply = await callOllama(systemPrompt, userMessage, [], 45000);
+  const reply = await callOllama(systemPrompt, userMessage, []);
 
   if (typingEl) typingEl.remove();
 

@@ -169,8 +169,7 @@ async function openSchoolChat(schoolItem) {
       `Start your message with exactly: "You matched with me because..."
 Then explain specifically using the student's actual data: their GPA ${s.gpa}, their major ${s.major}, their honors status (${s.honors || 'none'}), their priorities (${(s.priorities || []).join(', ') || 'none listed'}), and their extracurriculars (${(s.extracurriculars || []).join(', ') || 'none listed'}).
 Be honest about their GPA vs your competitive range. Then ask one specific question about what they want to know.`,
-      [],
-      60000
+      []
     );
     typing.remove();
 
@@ -180,6 +179,19 @@ Be honest about their GPA vs your competitive range. Then ask one specific quest
     renderChatBubble('assistant', text);
     scrollChatToBottom();
     persistSchoolChat(modal);
+  }
+
+  // Subtle guest prompt — chat works but won't be saved
+  const isGuest = typeof currentUserId !== 'undefined' && currentUserId &&
+    String(currentUserId).startsWith('guest_');
+  if (isGuest) {
+    const notice = document.createElement('div');
+    notice.style.cssText =
+      'font-size:0.75rem;color:var(--muted);text-align:center;padding:6px 12px;' +
+      'border-top:1px solid var(--border);background:var(--surface2)';
+    notice.textContent = 'Create an account to save your chat history.';
+    const chatBox = document.querySelector('.school-chat-box');
+    if (chatBox) chatBox.appendChild(notice);
   }
 
   inputEl.focus();
@@ -210,8 +222,7 @@ async function handleSchoolChatSend() {
   const reply = await callOllama(
     modal._systemPrompt,
     content,
-    modal._history.slice(-12),   // keep last 12 turns for context
-    60000
+    modal._history.slice(-12)   // keep last 12 turns for context
   );
   typing.remove();
   inputEl.disabled = false;

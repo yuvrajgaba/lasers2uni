@@ -94,7 +94,6 @@ async function handleAuthSubmit() {
       showAuthError('Incorrect password.');
     } else {
       showAuthError('Something went wrong. Try again.');
-      console.error('[auth.js]', result.error);
     }
     return;
   }

@@ -594,6 +594,11 @@ function subscribeToChat(major, callback) {
 
 /* ═══════════════════════════════════════════════════════════════
    SCHOOL CHAT (one conversation per user+school)
+   IMPORTANT: Run this once in Supabase SQL Editor before demo:
+     ALTER TABLE school_chats ADD CONSTRAINT
+       school_chats_user_school_unique
+       UNIQUE (user_id, school_id);
+   This allows the upsert { onConflict: 'user_id,school_id' } to work.
 ═══════════════════════════════════════════════════════════════ */
 
 /**

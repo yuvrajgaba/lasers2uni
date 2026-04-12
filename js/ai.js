@@ -27,50 +27,50 @@ const AI_MAX_TOKENS = 1000;
  * callOllama(systemPrompt, userMessage, conversationHistory)
  *
  * @param {string}   systemPrompt        - Instructions / role definition
- * @param {string}   userMessage         - Latest user message
+ * @param {string}   userMessage         - Latest user message (used when history is empty)
  * @param {Array}    conversationHistory - Prior messages [{role, content}]
- * @param {number}   timeoutMs           - Default 60 000 ms
  * @returns {Promise<string|null>}       - Text reply, or null if offline
  */
-async function callOllama(systemPrompt, userMessage, conversationHistory = [], timeoutMs = 60000) {
-  console.log('[Ollama] Attempting call to', 'http://localhost:11434/api/chat');
-
+async function callOllama(systemPrompt, userMessage, conversationHistory = []) {
   if (!OLLAMA_ENABLED) return null;
 
-  const messages = conversationHistory.length > 0
-    ? conversationHistory
-    : [{ role: 'user', content: userMessage }];
-
   try {
-    const controller = new AbortController();
-    const timeout    = setTimeout(() => controller.abort(), timeoutMs);
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...conversationHistory,
+      ...(conversationHistory.length === 0
+        ? [{ role: 'user', content: userMessage }]
+        : [])
+    ];
 
-    const resp = await fetch(`${OLLAMA_URL}/api/chat`, {
-      method:  'POST',
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000);
+
+    const resp = await fetch('http://localhost:11434/api/chat', {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      signal:  controller.signal,
+      signal: controller.signal,
       body: JSON.stringify({
-        model:  AI_MODEL,
+        model: AI_MODEL,
         stream: false,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messages
-        ]
+        messages
       })
     });
 
     clearTimeout(timeout);
-    if (!resp.ok) throw new Error(`Ollama HTTP ${resp.status} ${resp.statusText}`);
+    if (!resp.ok) throw new Error(`Ollama ${resp.status}`);
 
     const data = await resp.json();
-    const text = (data.message?.content || data.response || '').trim();
-    return text || null;
+    const content = data.message?.content || data.response || '';
+    if (!content) throw new Error('Empty response');
+    return content;
 
   } catch (err) {
-    console.error('[Ollama] Full error:', err);
+    console.error('[Ollama] Failed:', err.message);
     return null;
   }
 }
+window.callOllama = callOllama;
 
 /**
  * generateAIContent()
@@ -81,6 +81,11 @@ async function callOllama(systemPrompt, userMessage, conversationHistory = [], t
  * @returns {Promise<Object>} dashboard JSON
  */
 async function generateAIContent(student, schoolsList, outcomesData = []) {
+  // Guard: don't regenerate if we already have data
+  if (typeof aiData !== 'undefined' && aiData && typeof aiData === 'object' && Object.keys(aiData).length > 0) {
+    return aiData;
+  }
+
   if (!OLLAMA_ENABLED) {
     console.info('[ai.js] Ollama disabled  -  using fallback content.');
     return buildFallback(student, schoolsList);
@@ -98,7 +103,7 @@ async function generateAIContent(student, schoolsList, outcomesData = []) {
   const systemPrompt = 'You are an expert college transfer counselor. Return only valid JSON, no markdown fencing, no explanation — just the raw JSON object as instructed.';
   const userMessage  = buildPrompt(student, allSchools, outcomesData);
 
-  const rawText = await callOllama(systemPrompt, userMessage, [], 60000);
+  const rawText = await callOllama(systemPrompt, userMessage, []);
 
   if (!rawText) {
     console.warn('[ai.js] Ollama offline — using fallback');
@@ -550,7 +555,7 @@ School overall admit rate: ${admitPct}%
 Major min GPA for this school: ${majorMinGpa}
 TAG eligible for this major: ${tagEligible}`;
 
-  const result = await callOllama(systemPrompt, userMessage, [], 30000);
+  const result = await callOllama(systemPrompt, userMessage, []);
 
   if (result) {
     try {

@@ -18,28 +18,47 @@ async function renderCompetitorTab(pane) {
     <div class="competitor-wrap">
       <div class="competitor-header">
         <h2 class="section-title" style="margin:0">⚔ Your Competitor</h2>
-        <button class="btn-primary competitor-regenerate" id="btn-regen-competitor">↻ Generate New</button>
       </div>
       <p class="section-sub">
         Meet a typical student you're up against for your top-choice schools. See who wins on each stat —
         and what your unique edge is.
       </p>
-      <div id="competitor-content">
-        <div class="competitor-loading">⏳ Generating a realistic rival profile…</div>
+      <div style="text-align:center;padding:32px 0">
+        <button class="btn-primary" id="btn-gen-competitor" style="font-size:1rem;padding:14px 32px">
+          ⚔ Generate My Competitor
+        </button>
       </div>
+      <div id="competitor-content"></div>
     </div>
   `;
 
-  document.getElementById('btn-regen-competitor').onclick = async () => {
-    document.getElementById('competitor-content').innerHTML = '<div class="competitor-loading">⏳ Generating a fresh rival…</div>';
+  document.getElementById('btn-gen-competitor').addEventListener('click', async function () {
+    const btn = document.getElementById('btn-gen-competitor');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating…'; }
+    document.getElementById('competitor-content').innerHTML =
+      '<div class="competitor-loading">⏳ Generating a realistic rival profile…</div>';
+
     const c = await generateCompetitor(student);
     _lastCompetitor = c;
     renderVersus(c);
-  };
 
-  const c = await generateCompetitor(student);
-  _lastCompetitor = c;
-  renderVersus(c);
+    // Swap to regenerate button
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '↻ Generate New';
+      btn.onclick = async () => {
+        btn.disabled = true;
+        btn.textContent = '⏳ Generating…';
+        document.getElementById('competitor-content').innerHTML =
+          '<div class="competitor-loading">⏳ Generating a fresh rival…</div>';
+        const c2 = await generateCompetitor(student);
+        _lastCompetitor = c2;
+        renderVersus(c2);
+        btn.disabled = false;
+        btn.textContent = '↻ Generate New';
+      };
+    }
+  });
 }
 
 /**

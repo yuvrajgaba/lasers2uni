@@ -878,8 +878,11 @@ a:hover { text-decoration: underline; }
     border-right: none;
     border-top: 1px solid var(--border);
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
     gap: 2px;
   }
+  .dash-sidebar::-webkit-scrollbar { display: none; }
   .dash-sidebar .tab {
     flex-direction: column;
     gap: 3px;
@@ -889,6 +892,7 @@ a:hover { text-decoration: underline; }
     border-bottom: 2px solid transparent;
     border-radius: 6px;
     white-space: nowrap;
+    flex-shrink: 0;
   }
   .dash-sidebar .tab.active {
     border-left-color: transparent;

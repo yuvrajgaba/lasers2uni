@@ -207,6 +207,7 @@ async function rerunWithUpdatedProfile() {
     balancedList = buildBalancedRanking(pool);
 
     if (typeof generateAIContent === 'function') {
+      aiData = {};  // reset guard so generateAIContent always regenerates on profile update
       aiData = await generateAIContent(student, balancedList, outcomesData);
     }
 
@@ -218,8 +219,7 @@ async function rerunWithUpdatedProfile() {
     if (typeof saveOnboarding === 'function' && typeof currentUserId !== 'undefined' && currentUserId) {
       saveOnboarding(currentUserId, student);
     }
-  } catch (err) {
-    console.error('[update-profile] rerun failed:', err);
+  } catch (_) {
     showScreen('screen-dashboard');
     showToast('Could not rerun matches. Please try again.', 3500);
   }
